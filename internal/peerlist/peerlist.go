@@ -63,8 +63,8 @@ func Add(hostPort string) {
 	peerList.peers[hostPort] = NewPeer(hostPort)
 }
 
-// Remove removes a Peer from the PeerList
-func Remove(hostPort string) {
+// Delete removes a Peer from the PeerList
+func Delete(hostPort string) {
 	trace.Entered("PeerList:Remove")
 	defer trace.Exited("PeerList:Remove")
 	delete(peerList.peers, hostPort)

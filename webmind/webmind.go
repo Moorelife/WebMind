@@ -15,7 +15,7 @@ func main() {
 	ctx := webmind.ParseArgsToContext()
 	ctx = webmind.SetupLogging(ctx)
 
-	ctx, err := webmind.BuildPublicAddress(ctx)
+	ctx, err := webmind.RetrievePublicAddress(ctx)
 	if err != nil {
 		log.Printf("error retrieving public address: %v", err)
 	}

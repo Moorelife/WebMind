@@ -42,11 +42,11 @@ func SetupLogging(ctx context.Context) context.Context {
 	return ctx
 }
 
-// BuildPublicAddress retrieves the public address and places it in the context.
+// RetrievePublicAddress retrieves the public address and places it in the context.
 // It returns an error if the public address resolver cannot process the request.
-func BuildPublicAddress(ctx context.Context) (context.Context, error) {
-	trace.Entered("WebMind::Internal::BuildPublicAddress")
-	defer trace.Exited("WebMind::Internal::BuildPublicAddress")
+func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
+	trace.Entered("WebMind::Internal::RetrievePublicAddress")
+	defer trace.Exited("WebMind::Internal::RetrievePublicAddress")
 
 	address, err := ip.GetPublicIP()
 	if err != nil {
