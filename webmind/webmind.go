@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Moorelife/WebMind/internal/peerlist"
 	"github.com/Moorelife/WebMind/internal/webmind"
 )
 
+// WebMind in its current state is JUST A LEARNING EXPERIMENT,
+// and as such can not be expected to be fit for any given purpose.
+// Please understand that you use the program at your own risk!!!
+
 func main() {
 	ctx := webmind.ParseArgsToContext()
-
 	ctx = webmind.SetupLogging(ctx)
 
 	ctx, err := webmind.BuildPublicAddress(ctx)
@@ -18,13 +20,8 @@ func main() {
 		log.Printf("error retrieving public address: %v", err)
 	}
 
+	webmind.CreateAndRetrievePeerList(ctx)
+
 	webmind.SetupExitHandler(ctx)
-
-	log.Println(fmt.Sprintf("%s", ctx.Value("selfAddress")))
-	peerlist.Add(fmt.Sprintf("%s", ctx.Value("selfAddress")))
-	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
-		peerlist.Get(fmt.Sprintf("%s", ctx.Value("origin")))
-	}
-
 	webmind.HandleRequests(fmt.Sprintf("%s", ctx.Value("port")))
 }

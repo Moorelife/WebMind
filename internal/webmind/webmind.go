@@ -58,6 +58,13 @@ func BuildPublicAddress(ctx context.Context) (context.Context, error) {
 	return ctx, err
 }
 
+func CreateAndRetrievePeerList(ctx context.Context) {
+	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
+		peerlist.Get(fmt.Sprintf("%s", ctx.Value("origin")))
+	}
+	peerlist.Add(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+}
+
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
 func SetupExitHandler(ctx context.Context) {
 	trace.Entered("WebMind::Internal::SetupExitHandler")
@@ -68,7 +75,7 @@ func SetupExitHandler(ctx context.Context) {
 	go func() {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
-			peerlist.Remove(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.Delete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 
 			os.Exit(0)
 		}
