@@ -45,8 +45,9 @@ func GetPublicIP() (string, error) {
 
 	var buffer []byte = make([]byte, 100)
 	count, err := resp.Body.Read(buffer)
+	address := buffer[:count]
 	if err != nil || count == 0 {
 		return "", fmt.Errorf("GetPublicIP could not read data from api.ipify.org: %w", err)
 	}
-	return string(buffer), nil
+	return string(address), nil
 }
