@@ -54,29 +54,68 @@ func RemoteAdd(sendTo string) {
 	}
 }
 
+// RemoteDeleteToAll sends an Add peer request to all members on the peer list.
+func RemoteDeleteToAll(exceptAddress string) {
+	trace.Entered("PeerList:RemoteDeleteToAll")
+	defer trace.Exited("PeerList:RemoteDeleteToAll")
+
+	for other := range Peers.peers {
+		if other != exceptAddress {
+			RemoteAdd(other)
+		}
+	}
+}
+
+// RemoteDelete sends a request to get this host added to the remote specified.
+func RemoteDelete(sendTo string) {
+	trace.Entered("PeerList:RemoteDelete")
+	defer trace.Exited("PeerList:RemoteDelete")
+
+	url := fmt.Sprintf("http://%v/peer/delete", sendTo)
+	_, err := http.Get(url)
+	if err != nil {
+		log.Printf("Failed to send peer list delete request to %v (ERROR: %v)\n", sendTo, err)
+	}
+}
+
 // RemoteGet returns the peer list as a sorted slice.
 func RemoteGet(hostPort string) []Peer {
 	trace.Entered("PeerList:RemoteGet")
 	defer trace.Exited("PeerList:RemoteGet")
 
 	url := fmt.Sprintf("http://%v/peer/list", hostPort)
+
+	log.Printf(">>>> Sending request: %s", url)
+
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("Failed to get peer list from %v (ERROR: %v)\n", hostPort, err)
+		log.Printf("failed to get peer list from %v (ERROR: %v)\n", hostPort, err)
 	}
+
+	log.Println(">>>> Defer body.Close()")
 
 	defer resp.Body.Close()
 
+	log.Println(">>>> reading body")
+
 	rawlist, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read body for peer list from %v (ERROR: %v)\n", hostPort, err)
+		log.Printf("failed to read body for peer list from %v (ERROR: %v)\n", hostPort, err)
 	}
 
-	fmt.Printf("%#s\n", string(rawlist))
+	peers := make([]string, 1)
+	err = json.Unmarshal(rawlist, &peers)
+	if err != nil {
+		log.Printf("error converting peerlist from JSON: %v", err)
+	}
 
-	var result []Peer
-	result = append(result, *NewPeer(hostPort))
-	return result
+	for _, peerAddr := range peers {
+		Peers.peers[peerAddr] = NewPeer(peerAddr)
+	}
+
+	fmt.Printf(">>>> %#s\n", string(rawlist))
+
+	return LocalGet(hostPort)
 }
 
 // Local functions deal with operations on the local peer list.
@@ -114,16 +153,16 @@ func LocalDelete(hostPort string) {
 func HandlePeerAdd(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("PeerList:HandlePeerAdd endpoint")
 	defer trace.Exited("PeerList:HandlePeerAdd endpoint")
-	log.Printf("Added host %v togg the peerlist\n", r.Host)
-	LocalAdd(r.Host)
+	log.Printf("Added host %v to the peerlist\n", r.RemoteAddr)
+	LocalAdd(r.RemoteAddr)
 }
 
 // HandlePeerDelete deals with peer removal requests coming in over the network.
 func HandlePeerDelete(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("PeerList:HandlePeerDelete endpoint")
 	defer trace.Exited("PeerList:HandlePeerDelete endpoint")
-	log.Printf("Removed host %v from the peerlist\n", r.Host)
-	LocalAdd(r.Host)
+	log.Printf("Removed host %v from the peerlist\n", r.RemoteAddr)
+	LocalDelete(r.RemoteAddr)
 }
 
 // HandlePeerList deals with peer list requests coming in over the network.

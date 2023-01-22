@@ -59,10 +59,10 @@ func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
 }
 
 func CreateAndRetrievePeerList(ctx context.Context) {
+	peerlist.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
 		peerlist.RemoteGet(fmt.Sprintf("%s", ctx.Value("origin")))
 	}
-	peerlist.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 }
 
 // SendPeerAddRequests sends a peer add request to each system in the peer list.
@@ -84,6 +84,7 @@ func SetupExitHandler(ctx context.Context) {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
 			peerlist.LocalDelete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.RemoteDeleteToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 
 			os.Exit(0)
 		}
