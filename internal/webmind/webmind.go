@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Moorelife/WebMind/internal/ip"
 	"github.com/Moorelife/WebMind/internal/peerlist"
@@ -103,6 +104,8 @@ func HandleRequests(port string) {
 
 	// basic endpoints
 	http.HandleFunc("/", serverRoot)
+	http.HandleFunc("/keepalive", keepAlive)
+
 	http.HandleFunc("/trace/on", trace.HandleTraceOn)
 	http.HandleFunc("/trace/off", trace.HandleTraceOff)
 
@@ -119,14 +122,21 @@ func serverRoot(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("WebMind:Internal:serverRoot")
 	defer trace.Exited("WebMind:Internal:serverRoot")
 
-	trace.Entered("serverRoot endpoint")
-	defer trace.Exited("serverRoot endpoint")
-
 	printRequest(r)
 
 	defer r.Body.Close()
 
 	fmt.Fprintf(w, "WebMind up and running!")
+}
+
+// basic operations endpoints
+func keepAlive(w http.ResponseWriter, r *http.Request) {
+	trace.Entered("WebMind:Internal:keepAlive")
+	defer trace.Exited("WebMind:Internal:keepAlive")
+
+	defer r.Body.Close()
+
+	fmt.Fprintf(w, "I'm still here...")
 }
 
 func printRequest(r *http.Request) {
@@ -166,4 +176,26 @@ func printHeaderMap(header http.Header) {
 		log.Println("-      ", v.Key, ": ", v.Value)
 		// }
 	}
+}
+
+// SendKeepAlive starts a go routine that sends a /keepalive request to all peers every two seconds.
+func SendKeepAlive(ctx context.Context) {
+	trace.Entered("WebMind:Internal:SendKeepAlives")
+	defer trace.Exited("WebMind:Internal:SendKeepAlives")
+
+	go func() {
+		for true {
+			for key, peer := range peerlist.Peers {
+				self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
+				if key != self {
+					url := fmt.Sprintf("http://%v/keepalive", key)
+					_, err := http.Get(url)
+					if err != nil {
+						log.Printf("Failed to send keepalive to %v (ERROR: %v)\n", peer, err)
+					}
+				}
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 }
