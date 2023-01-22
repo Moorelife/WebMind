@@ -17,10 +17,9 @@ type Peer struct {
 }
 
 // PeerList holds all information for a collection of peers.
-type PeerList struct {
-	peers map[string]*Peer
-}
+type PeerList map[string]Peer
 
+// Peers contains the list of Peer objects for this instance of the client.
 var Peers = PeerList{}
 
 // NewPeer creates a new Peer with the given host and port.
@@ -36,7 +35,7 @@ func RemoteAddToAll(ownAddress string) {
 	trace.Entered("PeerList:RemoteAddToAll")
 	defer trace.Exited("PeerList:RemoteAddToAll")
 
-	for other := range Peers.peers {
+	for other := range Peers {
 		if other != ownAddress {
 			RemoteAdd(ownAddress, other)
 		}
@@ -44,15 +43,16 @@ func RemoteAddToAll(ownAddress string) {
 }
 
 // RemoteAdd sends a request to get this host added to the remote specified.
-func RemoteAdd(toAddress, sendTo string) {
+func RemoteAdd(addressToAdd, sendTo string) {
 	trace.Entered("PeerList:RemoteAdd")
 	defer trace.Exited("PeerList:RemoteAdd")
 
-	url := fmt.Sprintf("http://%v/peer/add?%v", sendTo, toAddress)
+	url := fmt.Sprintf("http://%v/peer/add?%v", sendTo, addressToAdd)
 	_, err := http.Get(url)
 	if err != nil {
 		log.Printf("Failed to send peer list add request to %v (ERROR: %v)\n", sendTo, err)
 	}
+	log.Printf("AFTER ADD: %#v", LocalGet(addressToAdd))
 }
 
 // RemoteDeleteToAll sends an Add peer request to all members on the peer list.
@@ -60,7 +60,7 @@ func RemoteDeleteToAll(exceptAddress string) {
 	trace.Entered("PeerList:RemoteDeleteToAll")
 	defer trace.Exited("PeerList:RemoteDeleteToAll")
 
-	for other := range Peers.peers {
+	for other := range Peers {
 		if other != exceptAddress {
 			RemoteDelete(exceptAddress, other)
 		}
@@ -77,6 +77,7 @@ func RemoteDelete(selfAddress, sendTo string) {
 	if err != nil {
 		log.Printf("Failed to send peer list delete request to %v (ERROR: %v)\n", sendTo, err)
 	}
+	log.Printf("AFTER DELETE: %#v", LocalGet(selfAddress))
 }
 
 // RemoteGet returns the peer list as a sorted slice.
@@ -86,18 +87,12 @@ func RemoteGet(hostPort string) []Peer {
 
 	url := fmt.Sprintf("http://%v/peer/list", hostPort)
 
-	log.Printf(">>>> Sending request: %s", url)
-
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("failed to get peer list from %v (ERROR: %v)\n", hostPort, err)
 	}
 
-	log.Println(">>>> Defer body.Close()")
-
 	defer resp.Body.Close()
-
-	log.Println(">>>> reading body")
 
 	rawlist, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -111,10 +106,8 @@ func RemoteGet(hostPort string) []Peer {
 	}
 
 	for _, peerAddr := range peers {
-		Peers.peers[peerAddr] = NewPeer(peerAddr)
+		Peers[peerAddr] = *NewPeer(peerAddr)
 	}
-
-	fmt.Printf(">>>> %#s\n", string(rawlist))
 
 	return LocalGet(hostPort)
 }
@@ -126,8 +119,13 @@ func LocalGet(hostPort string) []Peer {
 	trace.Entered("PeerList:LocalGet")
 	defer trace.Exited("PeerList:LocalGet")
 
+	log.Printf("Peerlist: %#v", Peers)
+
 	var result []Peer
-	result = append(result, *NewPeer(hostPort))
+	for _, peer := range Peers {
+		result = append(result, peer)
+	}
+
 	return result
 }
 
@@ -135,17 +133,20 @@ func LocalGet(hostPort string) []Peer {
 func LocalAdd(hostPort string) {
 	trace.Entered("PeerList:LocalAdd")
 	defer trace.Exited("PeerList:LocalAdd")
-	if Peers.peers == nil {
-		Peers.peers = make(map[string]*Peer)
+	if Peers == nil {
+		Peers = make(map[string]Peer)
 	}
-	Peers.peers[hostPort] = NewPeer(hostPort)
+
+	Peers[hostPort] = *NewPeer(hostPort)
+	log.Printf("AFTER ADD: %#v", LocalGet(hostPort))
 }
 
 // LocalDelete removes a Peer from the PeerList
 func LocalDelete(hostPort string) {
 	trace.Entered("PeerList:LocalDelete")
 	defer trace.Exited("PeerList:LocalDelete")
-	delete(Peers.peers, hostPort)
+	delete(Peers, hostPort)
+	log.Printf("AFTER DELETE: %#v", LocalGet(hostPort))
 }
 
 // Webserver handler functions.
@@ -174,7 +175,7 @@ func HandlePeerList(w http.ResponseWriter, r *http.Request) {
 	defer trace.Exited("PeerList:HandlePeerList endpoint")
 
 	var result []string
-	for _, peer := range Peers.peers {
+	for _, peer := range Peers {
 		result = append(result, string(peer.addressPort))
 	}
 

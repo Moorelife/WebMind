@@ -75,7 +75,7 @@ func CreateAndRetrievePeerList(ctx context.Context) {
 func SendPeerAddRequests(ctx context.Context) {
 	trace.Entered("WebMind:Internal:SendPeerAddRequests")
 	defer trace.Exited("WebMind:Internal:SendPeerAddRequests")
-	log.Printf("PEERLIST: %#v", peerlist.Peers)
+	log.Printf("PEERLIST: %v", peerlist.Peers)
 	peerlist.RemoteAddToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 }
 
