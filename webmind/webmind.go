@@ -21,7 +21,7 @@ func main() {
 	}
 
 	webmind.CreateAndRetrievePeerList(ctx)
-
+	webmind.SendPeerAddRequests(ctx)
 	webmind.SetupExitHandler(ctx)
 	webmind.HandleRequests(fmt.Sprintf("%s", ctx.Value("port")))
 }

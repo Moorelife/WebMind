@@ -18,8 +18,8 @@ import (
 
 // ParseArgsToContext parses all command line arguments and adds them to a context.
 func ParseArgsToContext() context.Context {
-	trace.Entered("WebMind::Internal::ParseArgsToContext")
-	defer trace.Exited("WebMind::Internal::ParseArgsToContext")
+	trace.Entered("WebMind:Internal:ParseArgsToContext")
+	defer trace.Exited("WebMind:Internal:ParseArgsToContext")
 
 	originServer := flag.String("origin", "", "origin server address")
 	webPort := flag.String("port", "7777", "https server port number")
@@ -34,8 +34,8 @@ func ParseArgsToContext() context.Context {
 
 // SetupLogging sets up logging and stores logging related arguments in the context if needed.
 func SetupLogging(ctx context.Context) context.Context {
-	trace.Entered("WebMind::Internal::SetupLogging")
-	defer trace.Exited("WebMind::Internal::SetupLogging")
+	trace.Entered("WebMind:Internal:SetupLogging")
+	defer trace.Exited("WebMind:Internal:SetupLogging")
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile | log.Lmsgprefix)
 	log.Printf("WebMind started on port %v\n", ctx.Value("port"))
@@ -45,8 +45,8 @@ func SetupLogging(ctx context.Context) context.Context {
 // RetrievePublicAddress retrieves the public address and places it in the context.
 // It returns an error if the public address resolver cannot process the request.
 func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
-	trace.Entered("WebMind::Internal::RetrievePublicAddress")
-	defer trace.Exited("WebMind::Internal::RetrievePublicAddress")
+	trace.Entered("WebMind:Internal:RetrievePublicAddress")
+	defer trace.Exited("WebMind:Internal:RetrievePublicAddress")
 
 	address, err := ip.GetPublicIP()
 	if err != nil {
@@ -60,22 +60,30 @@ func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
 
 func CreateAndRetrievePeerList(ctx context.Context) {
 	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
-		peerlist.Get(fmt.Sprintf("%s", ctx.Value("origin")))
+		peerlist.RemoteGet(fmt.Sprintf("%s", ctx.Value("origin")))
 	}
-	peerlist.Add(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+	peerlist.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+}
+
+// SendPeerAddRequests sends a peer add request to each system in the peer list.
+func SendPeerAddRequests(ctx context.Context) {
+	trace.Entered("WebMind:Internal:SendPeerAddRequests")
+	defer trace.Exited("WebMind:Internal:SendPeerAddRequests")
+	log.Printf("PEERLIST: %#v", peerlist.Peers)
+	peerlist.RemoteAddToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 }
 
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
 func SetupExitHandler(ctx context.Context) {
-	trace.Entered("WebMind::Internal::SetupExitHandler")
-	defer trace.Exited("WebMind::Internal::SetupExitHandler")
+	trace.Entered("WebMind:Internal:SetupExitHandler")
+	defer trace.Exited("WebMind:Internal:SetupExitHandler")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
-			peerlist.Delete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.LocalDelete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 
 			os.Exit(0)
 		}
@@ -83,8 +91,8 @@ func SetupExitHandler(ctx context.Context) {
 }
 
 func HandleRequests(port string) {
-	trace.Entered("WebMind::Internal::HandleRequests")
-	defer trace.Exited("WebMind::Internal::HandleRequests")
+	trace.Entered("WebMind:Internal:HandleRequests")
+	defer trace.Exited("WebMind:Internal:HandleRequests")
 
 	// basic endpoints
 	http.HandleFunc("/", serverRoot)
@@ -92,16 +100,17 @@ func HandleRequests(port string) {
 	http.HandleFunc("/trace/off", trace.HandleTraceOff)
 
 	// peerlist endpoints
-	http.HandleFunc("/peer/list", peerlist.HandlePeerList)
 	http.HandleFunc("/peer/add", peerlist.HandlePeerAdd)
+	http.HandleFunc("/peer/list", peerlist.HandlePeerList)
+	http.HandleFunc("/peer/delete", peerlist.HandlePeerDelete)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }
 
 // basic operations endpoints
 func serverRoot(w http.ResponseWriter, r *http.Request) {
-	trace.Entered("WebMind::Internal::serverRoot")
-	defer trace.Exited("WebMind::Internal::serverRoot")
+	trace.Entered("WebMind:Internal:serverRoot")
+	defer trace.Exited("WebMind:Internal:serverRoot")
 
 	trace.Entered("serverRoot endpoint")
 	defer trace.Exited("serverRoot endpoint")
@@ -114,8 +123,8 @@ func serverRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func printRequest(r *http.Request) {
-	trace.Entered("WebMind::Internal::printRequest")
-	defer trace.Exited("WebMind::Internal::printRequest")
+	trace.Entered("WebMind:Internal:printRequest")
+	defer trace.Exited("WebMind:Internal:printRequest")
 
 	log.Printf("-   Remote address: %v", r.RemoteAddr)
 	log.Printf("-   Request URI %v", r.RequestURI)
@@ -127,8 +136,8 @@ func printRequest(r *http.Request) {
 }
 
 func printHeaderMap(header http.Header) {
-	trace.Entered("WebMind::Internal::printHeaderMap")
-	defer trace.Exited("WebMind::Internal::printHeaderMap")
+	trace.Entered("WebMind:Internal:printHeaderMap")
+	defer trace.Exited("WebMind:Internal:printHeaderMap")
 
 	type KeyValue struct {
 		Key   string

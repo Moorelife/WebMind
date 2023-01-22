@@ -20,7 +20,7 @@ type PeerList struct {
 	peers map[string]*Peer
 }
 
-var peerList = PeerList{}
+var Peers = PeerList{}
 
 // NewPeer creates a new Peer with the given host and port.
 func NewPeer(hostPort string) *Peer {
@@ -28,10 +28,36 @@ func NewPeer(hostPort string) *Peer {
 	return &result
 }
 
-// Get returns the peer list as a sorted slice.
-func Get(hostPort string) []Peer {
-	trace.Entered("PeerList::GetPeerList endpoint")
-	defer trace.Exited("PeerList::GetPeerList endpoint")
+// Remote functions deal with sending requests to other peers regarding the peer list.
+
+// RemoteAddToAll sends an Add peer request to all members on the peer list.
+func RemoteAddToAll(exceptAddress string) {
+	trace.Entered("PeerList:RemoteAddToAll")
+	defer trace.Exited("PeerList:RemoteAddToAll")
+
+	for other := range Peers.peers {
+		if other != exceptAddress {
+			RemoteAdd(other)
+		}
+	}
+}
+
+// RemoteAdd sends a request to get this host added to the remote specified.
+func RemoteAdd(sendTo string) {
+	trace.Entered("PeerList:RemoteAdd")
+	defer trace.Exited("PeerList:RemoteAdd")
+
+	url := fmt.Sprintf("http://%v/peer/add", sendTo)
+	_, err := http.Get(url)
+	if err != nil {
+		log.Printf("Failed to send peer list add request to %v (ERROR: %v)\n", sendTo, err)
+	}
+}
+
+// RemoteGet returns the peer list as a sorted slice.
+func RemoteGet(hostPort string) []Peer {
+	trace.Entered("PeerList:RemoteGet")
+	defer trace.Exited("PeerList:RemoteGet")
 
 	url := fmt.Sprintf("http://%v/peer/list", hostPort)
 	resp, err := http.Get(url)
@@ -53,29 +79,60 @@ func Get(hostPort string) []Peer {
 	return result
 }
 
-// Add adds a new Peer to the PeerList
-func Add(hostPort string) {
-	trace.Entered("PeerList:Add")
-	defer trace.Exited("PeerList:Add")
-	if peerList.peers == nil {
-		peerList.peers = make(map[string]*Peer)
+// Local functions deal with operations on the local peer list.
+
+// LocalGet returns the peer list as a sorted slice.
+func LocalGet(hostPort string) []Peer {
+	trace.Entered("PeerList:LocalGet")
+	defer trace.Exited("PeerList:LocalGet")
+
+	var result []Peer
+	result = append(result, *NewPeer(hostPort))
+	return result
+}
+
+// LocalAdd adds a new Peer to the PeerList
+func LocalAdd(hostPort string) {
+	trace.Entered("PeerList:LocalAdd")
+	defer trace.Exited("PeerList:LocalAdd")
+	if Peers.peers == nil {
+		Peers.peers = make(map[string]*Peer)
 	}
-	peerList.peers[hostPort] = NewPeer(hostPort)
+	Peers.peers[hostPort] = NewPeer(hostPort)
 }
 
-// Delete removes a Peer from the PeerList
-func Delete(hostPort string) {
-	trace.Entered("PeerList:Remove")
-	defer trace.Exited("PeerList:Remove")
-	delete(peerList.peers, hostPort)
+// LocalDelete removes a Peer from the PeerList
+func LocalDelete(hostPort string) {
+	trace.Entered("PeerList:LocalDelete")
+	defer trace.Exited("PeerList:LocalDelete")
+	delete(Peers.peers, hostPort)
 }
 
+// Webserver handler functions.
+
+// HandlePeerAdd deals with peer addition requests coming in over the network.
+func HandlePeerAdd(w http.ResponseWriter, r *http.Request) {
+	trace.Entered("PeerList:HandlePeerAdd endpoint")
+	defer trace.Exited("PeerList:HandlePeerAdd endpoint")
+	log.Printf("Added host %v togg the peerlist\n", r.Host)
+	LocalAdd(r.Host)
+}
+
+// HandlePeerDelete deals with peer removal requests coming in over the network.
+func HandlePeerDelete(w http.ResponseWriter, r *http.Request) {
+	trace.Entered("PeerList:HandlePeerDelete endpoint")
+	defer trace.Exited("PeerList:HandlePeerDelete endpoint")
+	log.Printf("Removed host %v from the peerlist\n", r.Host)
+	LocalAdd(r.Host)
+}
+
+// HandlePeerList deals with peer list requests coming in over the network.
 func HandlePeerList(w http.ResponseWriter, r *http.Request) {
-	trace.Entered("PeerList::HandlePeerList endpoint")
-	defer trace.Exited("PeerList::HandlePeerList endpoint")
+	trace.Entered("PeerList:HandlePeerList endpoint")
+	defer trace.Exited("PeerList:HandlePeerList endpoint")
 
 	var result []string
-	for _, peer := range peerList.peers {
+	for _, peer := range Peers.peers {
 		result = append(result, string(peer.addressPort))
 	}
 
@@ -85,11 +142,4 @@ func HandlePeerList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(j)
-}
-
-func HandlePeerAdd(w http.ResponseWriter, r *http.Request) {
-	trace.Entered("PeerList::HandlePeerAdd endpoint")
-	defer trace.Exited("PeerList::HandlePeerAdd endpoint")
-
-	Add(r.Host)
 }
