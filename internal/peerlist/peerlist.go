@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/Moorelife/WebMind/internal/trace"
 )
@@ -31,23 +32,23 @@ func NewPeer(hostPort string) *Peer {
 // Remote functions deal with sending requests to other peers regarding the peer list.
 
 // RemoteAddToAll sends an Add peer request to all members on the peer list.
-func RemoteAddToAll(exceptAddress string) {
+func RemoteAddToAll(ownAddress string) {
 	trace.Entered("PeerList:RemoteAddToAll")
 	defer trace.Exited("PeerList:RemoteAddToAll")
 
 	for other := range Peers.peers {
-		if other != exceptAddress {
-			RemoteAdd(other)
+		if other != ownAddress {
+			RemoteAdd(ownAddress, other)
 		}
 	}
 }
 
 // RemoteAdd sends a request to get this host added to the remote specified.
-func RemoteAdd(sendTo string) {
+func RemoteAdd(toAddress, sendTo string) {
 	trace.Entered("PeerList:RemoteAdd")
 	defer trace.Exited("PeerList:RemoteAdd")
 
-	url := fmt.Sprintf("http://%v/peer/add", sendTo)
+	url := fmt.Sprintf("http://%v/peer/add?%v", sendTo, toAddress)
 	_, err := http.Get(url)
 	if err != nil {
 		log.Printf("Failed to send peer list add request to %v (ERROR: %v)\n", sendTo, err)
@@ -61,17 +62,17 @@ func RemoteDeleteToAll(exceptAddress string) {
 
 	for other := range Peers.peers {
 		if other != exceptAddress {
-			RemoteAdd(other)
+			RemoteDelete(exceptAddress, other)
 		}
 	}
 }
 
 // RemoteDelete sends a request to get this host added to the remote specified.
-func RemoteDelete(sendTo string) {
+func RemoteDelete(selfAddress, sendTo string) {
 	trace.Entered("PeerList:RemoteDelete")
 	defer trace.Exited("PeerList:RemoteDelete")
 
-	url := fmt.Sprintf("http://%v/peer/delete", sendTo)
+	url := fmt.Sprintf("http://%v/peer/delete?%v", sendTo, selfAddress)
 	_, err := http.Get(url)
 	if err != nil {
 		log.Printf("Failed to send peer list delete request to %v (ERROR: %v)\n", sendTo, err)
@@ -153,16 +154,18 @@ func LocalDelete(hostPort string) {
 func HandlePeerAdd(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("PeerList:HandlePeerAdd endpoint")
 	defer trace.Exited("PeerList:HandlePeerAdd endpoint")
-	log.Printf("Added host %v to the peerlist\n", r.RemoteAddr)
-	LocalAdd(r.RemoteAddr)
+	parts := strings.Split(r.RequestURI, "?")
+	log.Printf("Added host %v to the peerlist\n", parts[1])
+	LocalAdd(parts[1])
 }
 
 // HandlePeerDelete deals with peer removal requests coming in over the network.
 func HandlePeerDelete(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("PeerList:HandlePeerDelete endpoint")
 	defer trace.Exited("PeerList:HandlePeerDelete endpoint")
-	log.Printf("Removed host %v from the peerlist\n", r.RemoteAddr)
-	LocalDelete(r.RemoteAddr)
+	parts := strings.Split(r.RequestURI, "?")
+	log.Printf("Removed host %v from the peerlist\n", parts[1])
+	LocalDelete(parts[1])
 }
 
 // HandlePeerList deals with peer list requests coming in over the network.

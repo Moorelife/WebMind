@@ -29,6 +29,9 @@ func ParseArgsToContext() context.Context {
 	ctx = context.WithValue(ctx, "origin", *originServer)
 	ctx = context.WithValue(ctx, "port", *webPort)
 
+	log.Printf("origin: %v", ctx.Value("origin"))
+	log.Printf("port: %v", ctx.Value("port"))
+
 	return ctx
 }
 
@@ -55,6 +58,9 @@ func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
 	}
 	address = fmt.Sprintf("%v:%v", strings.Trim(address, " "), ctx.Value("port"))
 	ctx = context.WithValue(ctx, "selfAddress", address)
+
+	log.Printf("selfAddress: %v", ctx.Value("selfAddress"))
+
 	return ctx, err
 }
 
