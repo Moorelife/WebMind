@@ -133,8 +133,9 @@ func serverRoot(w http.ResponseWriter, r *http.Request) {
 func keepAlive(w http.ResponseWriter, r *http.Request) {
 	trace.Entered("WebMind:Internal:keepAlive")
 	defer trace.Exited("WebMind:Internal:keepAlive")
-
 	defer r.Body.Close()
+	sender := strings.Split(r.RequestURI, "?")
+	log.Printf("keepalive from %v", sender[1])
 
 	fmt.Fprintf(w, "I'm still here...")
 }
@@ -184,11 +185,11 @@ func SendKeepAlive(ctx context.Context) {
 	defer trace.Exited("WebMind:Internal:SendKeepAlives")
 
 	go func() {
+		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
 			for key, peer := range peerlist.Peers {
-				self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 				if key != self {
-					url := fmt.Sprintf("http://%v/keepalive", key)
+					url := fmt.Sprintf("http://%v/keepalive?%v", key, self)
 					_, err := http.Get(url)
 					if err != nil {
 						log.Printf("Failed to send keepalive to %v (ERROR: %v)\n", peer, err)
