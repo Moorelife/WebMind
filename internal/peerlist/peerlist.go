@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Moorelife/WebMind/internal/trace"
 )
@@ -14,17 +15,18 @@ import (
 // Peer holds all information about a network peer.
 type Peer struct {
 	addressPort string
+	lastSeen    time.Time
 }
 
 // PeerList holds all information for a collection of peers.
-type PeerList map[string]Peer
+type PeerList map[string]*Peer
 
 // Peers contains the list of Peer objects for this instance of the client.
 var Peers = PeerList{}
 
 // NewPeer creates a new Peer with the given host and port.
 func NewPeer(hostPort string) *Peer {
-	result := Peer{hostPort}
+	result := Peer{hostPort, time.Now()}
 	return &result
 }
 
@@ -52,7 +54,7 @@ func RemoteAdd(addressToAdd, sendTo string) {
 	if err != nil {
 		log.Printf("Failed to send peer list add request to %v (ERROR: %v)\n", sendTo, err)
 	}
-	log.Printf("AFTER ADD: %#v", LocalGet(addressToAdd))
+	log.Printf("Peerlist length after Add: %#v", len(LocalGet(addressToAdd)))
 }
 
 // RemoteDeleteToAll sends an Add peer request to all members on the peer list.
@@ -77,7 +79,7 @@ func RemoteDelete(selfAddress, sendTo string) {
 	if err != nil {
 		log.Printf("Failed to send peer list delete request to %v (ERROR: %v)\n", sendTo, err)
 	}
-	log.Printf("AFTER DELETE: %#v", LocalGet(selfAddress))
+	log.Printf("Peerlist length after Add: %#v", len(LocalGet(selfAddress)))
 }
 
 // RemoteGet returns the peer list as a sorted slice.
@@ -106,7 +108,7 @@ func RemoteGet(hostPort string) []Peer {
 	}
 
 	for _, peerAddr := range peers {
-		Peers[peerAddr] = *NewPeer(peerAddr)
+		Peers[peerAddr] = NewPeer(peerAddr)
 	}
 
 	return LocalGet(hostPort)
@@ -123,7 +125,7 @@ func LocalGet(hostPort string) []Peer {
 
 	var result []Peer
 	for _, peer := range Peers {
-		result = append(result, peer)
+		result = append(result, *peer)
 	}
 
 	return result
@@ -134,10 +136,10 @@ func LocalAdd(hostPort string) {
 	trace.Entered("PeerList:LocalAdd")
 	defer trace.Exited("PeerList:LocalAdd")
 	if Peers == nil {
-		Peers = make(map[string]Peer)
+		Peers = make(map[string]*Peer)
 	}
 
-	Peers[hostPort] = *NewPeer(hostPort)
+	Peers[hostPort] = NewPeer(hostPort)
 	log.Printf("AFTER ADD: %#v", LocalGet(hostPort))
 }
 
@@ -147,6 +149,33 @@ func LocalDelete(hostPort string) {
 	defer trace.Exited("PeerList:LocalDelete")
 	delete(Peers, hostPort)
 	log.Printf("AFTER DELETE: %#v", LocalGet(hostPort))
+}
+
+// CleanPeerList removes entries that have not been seen in the last KeepAlive cycle.
+func CleanPeerList() {
+	for _, peer := range Peers {
+		if peer.lastSeen.Before(time.Now().Add(-20 * time.Second)) {
+			LocalDelete(peer.addressPort)
+		}
+	}
+}
+
+func KeepAlive(w http.ResponseWriter, r *http.Request) {
+	trace.Entered("WebMind:Internal:KeepAlive")
+	defer trace.Exited("WebMind:Internal:KeepAlive")
+	defer r.Body.Close()
+	sender := strings.Split(r.RequestURI, "?")
+	log.Printf("keepalive from %v", sender[1])
+
+	// if received, mark peer as still alive at this time.
+	peer := Peers[sender[1]]
+	if peer == nil {
+		return
+	}
+	peer.lastSeen = time.Now()
+	log.Printf("keepAlive ")
+
+	fmt.Fprintf(w, "I'm still here...")
 }
 
 // Webserver handler functions.

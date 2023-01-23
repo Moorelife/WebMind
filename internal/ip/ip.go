@@ -50,5 +50,5 @@ func GetPublicIP() (string, error) {
 	// }
 
 	// For now, avoid the external call since we only work with one address anyway
-	return string("86.89.186.20"), nil
+	return string("192.168.2.111"), nil
 }

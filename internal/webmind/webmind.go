@@ -104,10 +104,10 @@ func HandleRequests(port string) {
 
 	// basic endpoints
 	http.HandleFunc("/", serverRoot)
-	http.HandleFunc("/keepalive", keepAlive)
 
 	http.HandleFunc("/trace/on", trace.HandleTraceOn)
 	http.HandleFunc("/trace/off", trace.HandleTraceOff)
+	http.HandleFunc("/keepalive", peerlist.KeepAlive)
 
 	// peerlist endpoints
 	http.HandleFunc("/peer/add", peerlist.HandlePeerAdd)
@@ -130,16 +130,6 @@ func serverRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 // basic operations endpoints
-func keepAlive(w http.ResponseWriter, r *http.Request) {
-	trace.Entered("WebMind:Internal:keepAlive")
-	defer trace.Exited("WebMind:Internal:keepAlive")
-	defer r.Body.Close()
-	sender := strings.Split(r.RequestURI, "?")
-	log.Printf("keepalive from %v", sender[1])
-
-	fmt.Fprintf(w, "I'm still here...")
-}
-
 func printRequest(r *http.Request) {
 	trace.Entered("WebMind:Internal:printRequest")
 	defer trace.Exited("WebMind:Internal:printRequest")
@@ -187,6 +177,7 @@ func SendKeepAlive(ctx context.Context) {
 	go func() {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
+			peerlist.CleanPeerList()
 			for key, peer := range peerlist.Peers {
 				if key != self {
 					url := fmt.Sprintf("http://%v/keepalive?%v", key, self)
