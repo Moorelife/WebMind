@@ -66,9 +66,9 @@ func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
 }
 
 func CreateAndRetrievePeerList(ctx context.Context) {
-	peerlist.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+	peerlist.Peers.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
-		peerlist.RemoteGet(fmt.Sprintf("%s", ctx.Value("origin")))
+		peerlist.Peers.RemoteGet(fmt.Sprintf("%s", ctx.Value("origin")))
 	}
 }
 
@@ -77,7 +77,7 @@ func SendPeerAddRequests(ctx context.Context) {
 	trace.Entered("WebMind:Internal:SendPeerAddRequests")
 	defer trace.Exited("WebMind:Internal:SendPeerAddRequests")
 	log.Printf("PEERLIST: %v", peerlist.Peers)
-	peerlist.RemoteAddToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+	peerlist.Peers.RemoteAddToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 }
 
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
@@ -90,8 +90,8 @@ func SetupExitHandler(ctx context.Context) {
 	go func() {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
-			peerlist.LocalDelete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
-			peerlist.RemoteDeleteToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.Peers.LocalDelete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.Peers.RemoteDeleteToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 
 			os.Exit(0)
 		}
@@ -107,12 +107,12 @@ func HandleRequests(port string) {
 
 	http.HandleFunc("/trace/on", trace.HandleTraceOn)
 	http.HandleFunc("/trace/off", trace.HandleTraceOff)
-	http.HandleFunc("/keepalive", peerlist.KeepAlive)
 
 	// peerlist endpoints
 	http.HandleFunc("/peer/add", peerlist.HandlePeerAdd)
 	http.HandleFunc("/peer/list", peerlist.HandlePeerList)
 	http.HandleFunc("/peer/delete", peerlist.HandlePeerDelete)
+	http.HandleFunc("/peer/keepalive", peerlist.Peers.KeepAlive)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }
@@ -177,7 +177,7 @@ func SendKeepAlive(ctx context.Context) {
 	go func() {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
-			peerlist.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.Peers.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 			for key, peer := range peerlist.Peers {
 				if key != self {
 					url := fmt.Sprintf("http://%v/keepalive?%v", key, self)
