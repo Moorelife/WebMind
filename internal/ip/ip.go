@@ -3,6 +3,7 @@ package ip
 import (
 	"fmt"
 	"net"
+	"net/http"
 )
 
 // GetLocalIP get all your local ipv4 address (except 127.0.0.1)
@@ -36,19 +37,18 @@ func GetOutboundIP() (string, error) {
 
 // GetPublicIP gets your public ip
 func GetPublicIP() (string, error) {
-	// resp, err := http.Get("https://api.ipify.org")
-	// if err != nil {
-	// 	return "", fmt.Errorf("GetPublicIP could not query api.ipify.org: %w", err)
-	// }
-	// defer resp.Body.Close()
+	resp, err := http.Get("https://api.ipify.org")
+	if err != nil {
+		return "", fmt.Errorf("GetPublicIP could not query api.ipify.org: %w", err)
+	}
+	defer resp.Body.Close()
 
-	// var buffer []byte = make([]byte, 100)
-	// count, err := resp.Body.Read(buffer)
-	// address := buffer[:count]
-	// if err != nil || count == 0 {
-	//     return "", fmt.Errorf("GetPublicIP could not read data from api.ipify.org: %w", err)
-	// }
+	var buffer []byte = make([]byte, 100)
+	count, err := resp.Body.Read(buffer)
+	address := buffer[:count]
+	if err != nil || count == 0 {
+		return "", fmt.Errorf("GetPublicIP could not read data from api.ipify.org: %w", err)
+	}
 
-	// For now, avoid the external call since we only work with one address anyway
-	return string("192.168.2.111"), nil
+	return string(address), nil
 }

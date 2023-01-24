@@ -152,9 +152,10 @@ func LocalDelete(hostPort string) {
 }
 
 // CleanPeerList removes entries that have not been seen in the last KeepAlive cycle.
-func CleanPeerList() {
+func CleanPeerList(exceptAddress string) {
 	for _, peer := range Peers {
-		if peer.lastSeen.Before(time.Now().Add(-20 * time.Second)) {
+		if peer.addressPort != exceptAddress &&
+			peer.lastSeen.Before(time.Now().Add(-20*time.Second)) {
 			LocalDelete(peer.addressPort)
 		}
 	}
@@ -173,7 +174,6 @@ func KeepAlive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	peer.lastSeen = time.Now()
-	log.Printf("keepAlive ")
 
 	fmt.Fprintf(w, "I'm still here...")
 }

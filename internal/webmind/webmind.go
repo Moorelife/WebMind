@@ -177,7 +177,7 @@ func SendKeepAlive(ctx context.Context) {
 	go func() {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
-			peerlist.CleanPeerList()
+			peerlist.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 			for key, peer := range peerlist.Peers {
 				if key != self {
 					url := fmt.Sprintf("http://%v/keepalive?%v", key, self)
