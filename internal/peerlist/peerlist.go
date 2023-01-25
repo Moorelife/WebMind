@@ -95,6 +95,9 @@ func (p *PeerList) RemoteGet(hostPort string) []Peer {
 		log.Printf("failed to get peer list from %v (ERROR: %v)\n", hostPort, err)
 	}
 
+	if resp == nil || resp.Body == nil {
+		return []Peer{}
+	}
 	defer resp.Body.Close()
 
 	rawlist, err := io.ReadAll(resp.Body)

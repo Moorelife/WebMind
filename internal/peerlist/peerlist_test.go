@@ -37,17 +37,18 @@ func TestNewPeer(t *testing.T) {
 }
 
 func TestPeerList_RemoteAddToAll(t *testing.T) {
+	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
+	var Peer2 = Peer{addressPort: "192.168.2.111:14285", lastSeen: time.Now()}
+	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
 	type args struct {
 		ownAddress string
 	}
 	tests := []struct {
 		name string
-		p    PeerList
 		args args
 	}{
 		{
 			name: "RemoteAdd",
-			p:    PeerList{"1.2.3.4:5": {"1.2.3.4:5", time.Now()}},
 			args: args{
 				ownAddress: "1.2.3.4:5",
 			},
@@ -55,7 +56,7 @@ func TestPeerList_RemoteAddToAll(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.p.RemoteAddToAll(tt.args.ownAddress)
+			Peers.RemoteAddToAll(tt.args.ownAddress)
 		})
 	}
 }
@@ -86,10 +87,92 @@ func TestPeerList_RemoteAdd(t *testing.T) {
 	}
 }
 
+func TestPeerList_RemoteDeleteToAll(t *testing.T) {
+	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
+	var Peer2 = Peer{addressPort: "192.168.2.111:14285", lastSeen: time.Now()}
+	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	type args struct {
+		exceptAddress string
+	}
+	tests := []struct {
+		name string
+		p    PeerList
+		args args
+	}{
+		{
+			name: "HandleLocalRemoteGetGoodFlow",
+			args: args{exceptAddress: "localhost:14285"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.p.RemoteDeleteToAll(tt.args.exceptAddress)
+		})
+	}
+}
+
+func TestPeerList_RemoteDelete(t *testing.T) {
+	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
+	var Peer2 = Peer{addressPort: "192.168.2.111:14285", lastSeen: time.Now()}
+	var peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	type args struct {
+		selfAddress string
+		sendTo      string
+	}
+	tests := []struct {
+		name string
+		p    PeerList
+		args args
+	}{
+		{
+			name: "HandleLocalRemoteGetGoodFlow",
+			p:    peers,
+			args: args{selfAddress: "localhost:14285", sendTo: "192.2.2.2:8888"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.p.RemoteDelete(tt.args.selfAddress, tt.args.sendTo)
+		})
+	}
+}
+
+func TestPeerList_RemoteGet(t *testing.T) {
+	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
+	var Peer2 = Peer{addressPort: "192.168.2.111:14285", lastSeen: time.Now()}
+	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	type args struct {
+		hostPort string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []Peer
+	}{
+		{
+			name: "HandleLocalRemoteGetGoodFlow",
+			args: args{hostPort: "localhost:14285"},
+			want: []Peer{},
+		},
+		{
+			name: "HandleLocalRemoteGetNilBody",
+			args: args{hostPort: "localhost:65535"},
+			want: []Peer{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Peers.RemoteGet(tt.args.hostPort); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RemoteGet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPeerList_LocalAdd(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: "192.168.2.111:14285", lastSeen: time.Now()}
-	var peerList = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	var peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
 	type args struct {
 		hostPort string
 	}
@@ -98,7 +181,8 @@ func TestPeerList_LocalAdd(t *testing.T) {
 		p    PeerList
 		args args
 	}{
-		{name: "HandleLocalDeleteGoodFlow", p: peerList, args: args{hostPort: "localhost:14285"}},
+		{name: "HandleLocalDeleteGoodFlow", p: peers, args: args{hostPort: "localhost:14285"}},
+		{name: "HandleLocalDeleteNilPeers", p: nil, args: args{hostPort: "localhost:14285"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
