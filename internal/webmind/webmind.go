@@ -22,8 +22,8 @@ func ParseArgsToContext() context.Context {
 	trace.Entered("WebMind:Internal:ParseArgsToContext")
 	defer trace.Exited("WebMind:Internal:ParseArgsToContext")
 
-	originServer := flag.String("origin", "", "origin server address")
-	webPort := flag.String("port", "7777", "https server port number")
+	originServer := flag.String("origin", "localhost:14285", "origin server address")
+	webPort := flag.String("port", "7777", "http server port number")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -48,21 +48,17 @@ func SetupLogging(ctx context.Context) context.Context {
 
 // RetrievePublicAddress retrieves the public address and places it in the context.
 // It returns an error if the public address resolver cannot process the request.
-func RetrievePublicAddress(ctx context.Context) (context.Context, error) {
+func RetrievePublicAddress(ctx context.Context) context.Context {
 	trace.Entered("WebMind:Internal:RetrievePublicAddress")
 	defer trace.Exited("WebMind:Internal:RetrievePublicAddress")
 
-	address, err := ip.GetPublicIP()
-	if err != nil {
-		log.Printf("GetPublicIP failed: %v", err)
-		return ctx, err
-	}
+	address := ip.GetPublicIP()
 	address = fmt.Sprintf("%v:%v", strings.Trim(address, " "), ctx.Value("port"))
 	ctx = context.WithValue(ctx, "selfAddress", address)
 
 	log.Printf("selfAddress: %v", ctx.Value("selfAddress"))
 
-	return ctx, err
+	return ctx
 }
 
 func CreateAndRetrievePeerList(ctx context.Context) {
@@ -112,7 +108,7 @@ func HandleRequests(port string) {
 	http.HandleFunc("/peer/add", peerlist.HandlePeerAdd)
 	http.HandleFunc("/peer/list", peerlist.HandlePeerList)
 	http.HandleFunc("/peer/delete", peerlist.HandlePeerDelete)
-	http.HandleFunc("/peer/keepalive", peerlist.Peers.KeepAlive)
+	http.HandleFunc("/peer/keepalive", peerlist.Peers.HandleKeepAlive)
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }
@@ -169,8 +165,8 @@ func printHeaderMap(header http.Header) {
 	}
 }
 
-// SendKeepAlive starts a go routine that sends a /keepalive request to all peers every two seconds.
-func SendKeepAlive(ctx context.Context) {
+// StartSendingKeepAlive starts a go routine that sends a /keepalive request to all peers every two seconds.
+func StartSendingKeepAlive(ctx context.Context) {
 	trace.Entered("WebMind:Internal:SendKeepAlives")
 	defer trace.Exited("WebMind:Internal:SendKeepAlives")
 
@@ -180,7 +176,7 @@ func SendKeepAlive(ctx context.Context) {
 			peerlist.Peers.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 			for key, peer := range peerlist.Peers {
 				if key != self {
-					url := fmt.Sprintf("http://%v/keepalive?%v", key, self)
+					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, self)
 					_, err := http.Get(url)
 					if err != nil {
 						log.Printf("Failed to send keepalive to %v (ERROR: %v)\n", peer, err)

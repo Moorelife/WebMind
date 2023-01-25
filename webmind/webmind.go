@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-
 	"github.com/Moorelife/WebMind/internal/webmind"
 )
 
@@ -14,15 +12,11 @@ import (
 func main() {
 	ctx := webmind.ParseArgsToContext()
 	ctx = webmind.SetupLogging(ctx)
-
-	ctx, err := webmind.RetrievePublicAddress(ctx)
-	if err != nil {
-		log.Printf("error retrieving public address: %v", err)
-	}
+	ctx = webmind.RetrievePublicAddress(ctx)
 
 	webmind.CreateAndRetrievePeerList(ctx)
 	webmind.SendPeerAddRequests(ctx)
+	webmind.StartSendingKeepAlive(ctx)
 	webmind.SetupExitHandler(ctx)
-	webmind.SendKeepAlive(ctx)
 	webmind.HandleRequests(fmt.Sprintf("%s", ctx.Value("port")))
 }

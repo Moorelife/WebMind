@@ -3,17 +3,17 @@ package ip
 import (
 	"fmt"
 	"net"
-	"net/http"
+	"strings"
 )
 
 // GetLocalIP get all your local ipv4 address (except 127.0.0.1)
 func GetLocalIP() ([]string, error) {
-	addrs, err := net.InterfaceAddrs()
+	address, err := net.InterfaceAddrs()
 	if err != nil {
 		return nil, fmt.Errorf("GetLocalIP could not get interface addresses: %w", err)
 	}
 	IPs := make([]string, 0)
-	for _, a := range addrs {
+	for _, a := range address {
 		if ipNet, ok := a.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
 			if ipNet.IP.To4() != nil {
 				IPs = append(IPs, ipNet.IP.To4().String())
@@ -36,19 +36,10 @@ func GetOutboundIP() (string, error) {
 }
 
 // GetPublicIP gets your public ip
-func GetPublicIP() (string, error) {
-	resp, err := http.Get("https://api.ipify.org")
-	if err != nil {
-		return "", fmt.Errorf("GetPublicIP could not query api.ipify.org: %w", err)
-	}
-	defer resp.Body.Close()
-
-	var buffer []byte = make([]byte, 100)
-	count, err := resp.Body.Read(buffer)
-	address := buffer[:count]
-	if err != nil || count == 0 {
-		return "", fmt.Errorf("GetPublicIP could not read data from api.ipify.org: %w", err)
-	}
-
-	return string(address), nil
+func GetPublicIP() string {
+	conn, _ := net.Dial("udp", "8.8.8.8:80")
+	defer conn.Close()
+	localAddr := conn.LocalAddr().String()
+	idx := strings.LastIndex(localAddr, ":")
+	return localAddr[0:idx]
 }
