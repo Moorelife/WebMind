@@ -202,13 +202,13 @@ func StartSendingKeepAlive(ctx context.Context) {
 	go func() {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
-			for key, peer := range peerlist.Peers.Users {
+			for key, _ := range peerlist.Peers.Users {
 				if key != self {
 					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, self)
 					// log.Printf("sending keepalive to %v", key)
 					_, err := http.Get(url)
 					if err != nil {
-						log.Printf("Failed to send keepalive to %v (ERROR: %v)\n", peer, err)
+						log.Printf("Failed to send keepalive to %v", key)
 					}
 				}
 			}

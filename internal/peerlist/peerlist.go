@@ -63,7 +63,8 @@ func (p *PeerList) RemoteAdd(addressToAdd, sendTo string) {
 	url := fmt.Sprintf("http://%v/peer/add?%v", sendTo, addressToAdd)
 	_, err := http.Get(url)
 	if err != nil {
-		log.Printf("Failed to send peer list add request to %v (ERROR: %v)\n", sendTo, err)
+		log.Printf("Failed to add to peer %v\n", sendTo)
+		p.LocalDelete(sendTo)
 	}
 }
 
@@ -183,7 +184,7 @@ func (p *PeerList) CleanPeerList(exceptAddress string) {
 	}
 }
 
-var CountOnly = true // if true, logs only the count, not the entries
+var CountOnly = false // if true, logs only the count, not the entries
 
 func (p *PeerList) LogLocalList(countOnly bool) {
 	if countOnly {
