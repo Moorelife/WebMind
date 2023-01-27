@@ -11,12 +11,12 @@ import (
 
 func main() {
 	ctx := webmind.ParseArgsToContext()
-	ctx = webmind.SetupLogging(ctx)
+	ctx, logFile := webmind.SetupLogging(ctx)
 	ctx = webmind.RetrievePublicAddress(ctx)
 
 	webmind.CreateAndRetrievePeerList(ctx)
 	webmind.SendPeerAddRequests(ctx)
 	webmind.StartSendingKeepAlive(ctx)
-	webmind.SetupExitHandler(ctx)
+	webmind.SetupExitHandler(ctx, logFile)
 	webmind.HandleRequests(fmt.Sprintf("%s", ctx.Value("port")))
 }

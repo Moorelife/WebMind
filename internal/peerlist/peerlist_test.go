@@ -44,7 +44,7 @@ func TestNewPeer(t *testing.T) {
 func TestPeerList_RemoteAddToAll(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		ownAddress string
 	}
@@ -78,7 +78,7 @@ func TestPeerList_RemoteAdd(t *testing.T) {
 	}{
 		{
 			name: "RemoteAdd",
-			p:    PeerList{originNode: {originNode, time.Now()}},
+			p:    PeerList{Users: map[string]*Peer{originNode: {originNode, time.Now()}}},
 			args: args{
 				addressToAdd: originNode,
 				sendTo:       originNode,
@@ -95,7 +95,7 @@ func TestPeerList_RemoteAdd(t *testing.T) {
 func TestPeerList_RemoteDeleteToAll(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		exceptAddress string
 	}
@@ -119,7 +119,7 @@ func TestPeerList_RemoteDeleteToAll(t *testing.T) {
 func TestPeerList_RemoteDelete(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	var peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	peers := PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		selfAddress string
 		sendTo      string
@@ -143,10 +143,9 @@ func TestPeerList_RemoteDelete(t *testing.T) {
 }
 
 func TestPeerList_RemoteGet(t *testing.T) {
-	var Peer1 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	var Peer2 = Peer{addressPort: "86.89.186.20:14285", lastSeen: time.Now()}
-	var Peer3 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2, Peer3.addressPort: &Peer3}
+	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
+	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		hostPort string
 	}
@@ -174,7 +173,7 @@ func TestPeerList_RemoteGetNilBody(t *testing.T) {
 	var Peer1 = Peer{addressPort: originNode, lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: "86.89.186.20:14285", lastSeen: time.Now()}
 	var Peer3 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2, Peer3.addressPort: &Peer3}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2, Peer3.addressPort: &Peer3}}
 	type args struct {
 		hostPort string
 	}
@@ -201,7 +200,7 @@ func TestPeerList_RemoteGetNilBody(t *testing.T) {
 func TestPeerList_LocalAdd(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	var peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	peers := PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		hostPort string
 	}
@@ -211,7 +210,7 @@ func TestPeerList_LocalAdd(t *testing.T) {
 		args args
 	}{
 		{name: "HandleLocalDeleteGoodFlow", p: peers, args: args{hostPort: "localhost:14285"}},
-		{name: "HandleLocalDeleteNilPeers", p: nil, args: args{hostPort: originNode}},
+		{name: "HandleLocalDeleteNilPeers", p: PeerList{}, args: args{hostPort: originNode}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -223,7 +222,7 @@ func TestPeerList_LocalAdd(t *testing.T) {
 func TestPeerList_LocalDelete(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		hostPort string
 	}
@@ -243,7 +242,7 @@ func TestPeerList_LocalDelete(t *testing.T) {
 func TestPeerList_CleanPeerList(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now().Add(-20 * time.Second)}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	type args struct {
 		exceptAddress string
 	}
@@ -262,7 +261,7 @@ func TestPeerList_CleanPeerList(t *testing.T) {
 }
 
 func TestPeerList_HandleKeepAliveNoPeers(t *testing.T) {
-	Peers = nil
+	Peers = PeerList{}
 	var reader io.Reader
 	requestURL := fmt.Sprintf("http://%s/peer/HandleKeepAlive?%s", originNode, originNode)
 	request, _ := http.NewRequest(http.MethodGet, requestURL, reader)
@@ -287,7 +286,7 @@ func TestPeerList_HandleKeepAliveNoPeers(t *testing.T) {
 func TestHandlePeerAdd(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	var reader io.Reader
 	requestURL := fmt.Sprintf("http://%s/peer/add?%s", originNode, originNode)
 	request, _ := http.NewRequest(http.MethodGet, requestURL, reader)
@@ -355,16 +354,18 @@ func TestHandlePeerList(t *testing.T) {
 func TestPeerList_logLocalList(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	var peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	peers := PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	tests := []struct {
 		name string
 		p    PeerList
+		cnt  bool
 	}{
-		{"logLocalListGoodFlow", peers},
+		{"logLocalListGoodFlow", peers, false},
+		{"logLocalListCountOnly", peers, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.p.logLocalList()
+			tt.p.logLocalList(tt.cnt)
 		})
 	}
 }
@@ -372,7 +373,7 @@ func TestPeerList_logLocalList(t *testing.T) {
 func TestPeerList_HandleKeepAlive(t *testing.T) {
 	var Peer1 = Peer{addressPort: "localHost:14285", lastSeen: time.Now()}
 	var Peer2 = Peer{addressPort: originNode, lastSeen: time.Now()}
-	Peers = PeerList{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}
+	Peers = PeerList{Users: map[string]*Peer{Peer1.addressPort: &Peer1, Peer2.addressPort: &Peer2}}
 	var reader io.Reader
 	requestURL := fmt.Sprintf("http://%s/peer/delete?%s", originNode, originNode)
 	request, _ := http.NewRequest(http.MethodGet, requestURL, reader)

@@ -39,7 +39,7 @@ func ParseArgsToContext() context.Context {
 }
 
 // SetupLogging sets up logging and stores logging related arguments in the context if needed.
-func SetupLogging(ctx context.Context) context.Context {
+func SetupLogging(ctx context.Context) (context.Context, *os.File) {
 	trace.Entered("WebMind:Internal:SetupLogging")
 	defer trace.Exited("WebMind:Internal:SetupLogging")
 
@@ -56,7 +56,7 @@ func SetupLogging(ctx context.Context) context.Context {
 	log.SetOutput(mw)
 
 	log.Printf("WebMind started on port %v\n", ctx.Value("port"))
-	return ctx
+	return ctx, logFile
 }
 
 // RetrievePublicAddress retrieves the public address and places it in the context.
@@ -92,7 +92,7 @@ func CreateAndRetrievePeerList(ctx context.Context) {
 	}
 
 	for _, origin := range originList {
-		peerlist.Peers.RemoteGet(origin)
+		go peerlist.Peers.RemoteGet(origin)
 	}
 }
 
@@ -105,7 +105,7 @@ func SendPeerAddRequests(ctx context.Context) {
 }
 
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
-func SetupExitHandler(ctx context.Context) {
+func SetupExitHandler(ctx context.Context, logFile *os.File) {
 	trace.Entered("WebMind:Internal:SetupExitHandler")
 	defer trace.Exited("WebMind:Internal:SetupExitHandler")
 
@@ -117,6 +117,7 @@ func SetupExitHandler(ctx context.Context) {
 			peerlist.Peers.LocalDelete(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 			peerlist.Peers.RemoteDeleteToAll(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 
+			logFile.Close()
 			os.Exit(0)
 		}
 	}()
@@ -127,7 +128,7 @@ func HandleRequests(port string) {
 	defer trace.Exited("WebMind:Internal:HandleRequests")
 
 	// basic endpoints
-	http.HandleFunc("/", serverRoot)
+	http.HandleFunc("/", HandleServerRootRequests)
 
 	http.HandleFunc("/trace/on", trace.HandleTraceOn)
 	http.HandleFunc("/trace/off", trace.HandleTraceOff)
@@ -142,9 +143,9 @@ func HandleRequests(port string) {
 }
 
 // basic operations endpoints
-func serverRoot(w http.ResponseWriter, r *http.Request) {
-	trace.Entered("WebMind:Internal:serverRoot")
-	defer trace.Exited("WebMind:Internal:serverRoot")
+func HandleServerRootRequests(w http.ResponseWriter, r *http.Request) {
+	trace.Entered("WebMind:Internal:HandleServerRootRequests")
+	defer trace.Exited("WebMind:Internal:HandleServerRootRequests")
 
 	printRequest(r)
 
@@ -195,23 +196,25 @@ func printHeaderMap(header http.Header) {
 
 // StartSendingKeepAlive starts a go routine that sends a /keepalive request to all peers every two seconds.
 func StartSendingKeepAlive(ctx context.Context) {
-	trace.Entered("WebMind:Internal:SendKeepAlives")
-	defer trace.Exited("WebMind:Internal:SendKeepAlives")
+	trace.Entered("WebMind:Internal:StartSendingKeepAlive")
+	defer trace.Exited("WebMind:Internal:StartSendingKeepAlive")
 
 	go func() {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
-			peerlist.Peers.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
 			for key, peer := range peerlist.Peers.Users {
 				if key != self {
 					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, self)
+					// log.Printf("sending keepalive to %v", key)
 					_, err := http.Get(url)
 					if err != nil {
 						log.Printf("Failed to send keepalive to %v (ERROR: %v)\n", peer, err)
 					}
 				}
 			}
-			time.Sleep(10 * time.Second)
+			peerlist.Peers.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
+			peerlist.Peers.LogLocalList(peerlist.CountOnly)
+			time.Sleep(peerlist.KeepAliveInterval)
 		}
 	}()
 }

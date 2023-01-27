@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-var trace = true // if true, logs enters and exits
+var trace = false // if true, logs enters and exits
 
 func Entered(name string) {
 	if trace {
