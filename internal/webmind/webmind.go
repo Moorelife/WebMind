@@ -2,8 +2,10 @@ package webmind
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -22,15 +24,15 @@ func ParseArgsToContext() context.Context {
 	trace.Entered("WebMind:Internal:ParseArgsToContext")
 	defer trace.Exited("WebMind:Internal:ParseArgsToContext")
 
-	originServer := flag.String("origin", "localhost:14285", "origin server address")
+	originsFile := flag.String("origins", "./origins.json", "origins list file")
 	webPort := flag.String("port", "7777", "http server port number")
 	flag.Parse()
 
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, "origin", *originServer)
+	ctx = context.WithValue(ctx, "origins", *originsFile)
 	ctx = context.WithValue(ctx, "port", *webPort)
 
-	log.Printf("origin: %v", ctx.Value("origin"))
+	log.Printf("origin: %v", ctx.Value("origins"))
 	log.Printf("port: %v", ctx.Value("port"))
 
 	return ctx
@@ -42,6 +44,17 @@ func SetupLogging(ctx context.Context) context.Context {
 	defer trace.Exited("WebMind:Internal:SetupLogging")
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile | log.Lmsgprefix)
+
+	logFileName := fmt.Sprintf("..\\..\\logs\\%v.log", ctx.Value("port"))
+
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(mw)
+
 	log.Printf("WebMind started on port %v\n", ctx.Value("port"))
 	return ctx
 }
@@ -62,9 +75,24 @@ func RetrievePublicAddress(ctx context.Context) context.Context {
 }
 
 func CreateAndRetrievePeerList(ctx context.Context) {
+	trace.Entered("WebMind:Internal:CreateAndRetrievePeerList")
+	defer trace.Exited("WebMind:Internal:CreateAndRetrievePeerList")
 	peerlist.Peers.LocalAdd(fmt.Sprintf("%s", ctx.Value("selfAddress")))
-	if fmt.Sprintf("%s", ctx.Value("origin")) != "" {
-		peerlist.Peers.RemoteGet(fmt.Sprintf("%s", ctx.Value("origin")))
+
+	origins, err := os.ReadFile(fmt.Sprintf("%s", ctx.Value("origins")))
+	if err != nil || len(origins) == 0 {
+		log.Printf("os.ReadFile() returned no data: %v", err)
+	}
+	originList := make([]string, 1)
+
+	err = json.Unmarshal(origins, &originList)
+	if err != nil {
+		log.Printf("Unmarshalling originsList failed: %v", err)
+		return
+	}
+
+	for _, origin := range originList {
+		peerlist.Peers.RemoteGet(origin)
 	}
 }
 
@@ -174,7 +202,7 @@ func StartSendingKeepAlive(ctx context.Context) {
 		self := fmt.Sprintf("%v", ctx.Value("selfAddress"))
 		for true {
 			peerlist.Peers.CleanPeerList(fmt.Sprintf("%s", ctx.Value("selfAddress")))
-			for key, peer := range peerlist.Peers {
+			for key, peer := range peerlist.Peers.Users {
 				if key != self {
 					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, self)
 					_, err := http.Get(url)

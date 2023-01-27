@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Moorelife/WebMind/internal/trace"
@@ -20,7 +21,10 @@ type Peer struct {
 }
 
 // PeerList holds all information for a collection of peers.
-type PeerList map[string]*Peer
+type PeerList struct {
+	Users map[string]*Peer
+	rw    sync.RWMutex
+}
 
 // Peers contains the list of Peer objects for this instance of the client.
 var Peers = PeerList{}
@@ -31,6 +35,10 @@ func NewPeer(hostPort string) *Peer {
 	return &result
 }
 
+func init() {
+	Peers.Users = make(map[string]*Peer, 1)
+}
+
 // Remote functions deal with sending requests to other peers regarding the peer list.
 
 // RemoteAddToAll sends an Add peer request to all members on the peer list.
@@ -38,7 +46,7 @@ func (p *PeerList) RemoteAddToAll(ownAddress string) {
 	trace.Entered("PeerList:RemoteAddToAll")
 	defer trace.Exited("PeerList:RemoteAddToAll")
 
-	for other := range Peers {
+	for other := range Peers.Users {
 		if other != ownAddress {
 			p.RemoteAdd(ownAddress, other)
 		}
@@ -64,7 +72,7 @@ func (p *PeerList) RemoteDeleteToAll(exceptAddress string) {
 	trace.Entered("PeerList:RemoteDeleteToAll")
 	defer trace.Exited("PeerList:RemoteDeleteToAll")
 
-	for other := range Peers {
+	for other := range Peers.Users {
 		if other != exceptAddress {
 			p.RemoteDelete(exceptAddress, other)
 		}
@@ -93,7 +101,8 @@ func (p *PeerList) RemoteGet(hostPort string) []Peer {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("failed to get peer list from %v (ERROR: %v)\n", hostPort, err)
+		log.Printf("failed to get peer list from %v, retrying once (ERROR: %v)\n", hostPort, err)
+		resp, err = http.Get(url)
 	}
 
 	if resp == nil || resp.Body == nil {
@@ -113,7 +122,7 @@ func (p *PeerList) RemoteGet(hostPort string) []Peer {
 	}
 
 	for _, peerAddr := range peers {
-		Peers[peerAddr] = NewPeer(peerAddr)
+		Peers.Users[peerAddr] = NewPeer(peerAddr)
 	}
 	p.logLocalList()
 
@@ -130,7 +139,7 @@ func (p *PeerList) LocalGet(hostPort string) []Peer {
 	log.Printf("Peerlist: %#v", Peers)
 
 	var result []Peer
-	for _, peer := range Peers {
+	for _, peer := range Peers.Users {
 		result = append(result, *peer)
 	}
 
@@ -141,11 +150,10 @@ func (p *PeerList) LocalGet(hostPort string) []Peer {
 func (p *PeerList) LocalAdd(hostPort string) {
 	trace.Entered("PeerList:LocalAdd")
 	defer trace.Exited("PeerList:LocalAdd")
-	if Peers == nil {
-		Peers = make(map[string]*Peer)
-	}
 
-	Peers[hostPort] = NewPeer(hostPort)
+	Peers.rw.Lock()
+	defer Peers.rw.Unlock()
+	Peers.Users[hostPort] = NewPeer(hostPort)
 	p.logLocalList()
 }
 
@@ -153,13 +161,15 @@ func (p *PeerList) LocalAdd(hostPort string) {
 func (p *PeerList) LocalDelete(hostPort string) {
 	trace.Entered("PeerList:LocalDelete")
 	defer trace.Exited("PeerList:LocalDelete")
-	delete(Peers, hostPort)
+	Peers.rw.Lock()
+	defer Peers.rw.Unlock()
+	delete(Peers.Users, hostPort)
 	p.logLocalList()
 }
 
 // CleanPeerList removes entries that have not been seen in the last HandleKeepAlive cycle.
 func (p *PeerList) CleanPeerList(exceptAddress string) {
-	for _, peer := range Peers {
+	for _, peer := range Peers.Users {
 		if peer.addressPort != exceptAddress &&
 			peer.lastSeen.Before(time.Now().Add(-11*time.Second)) {
 			p.LocalDelete(peer.addressPort)
@@ -167,10 +177,16 @@ func (p *PeerList) CleanPeerList(exceptAddress string) {
 	}
 }
 
+var countOnly = true // if true, logs only the count, not the entries
+
 func (p *PeerList) logLocalList() {
+	if countOnly {
+		log.Printf("PEERLIST COUNT: %v", len(Peers.Users))
+		return
+	}
 	log.Print("----------------------------------------------------------------------------------")
 	log.Print("Address 			LastSeen")
-	for _, peer := range Peers {
+	for _, peer := range Peers.Users {
 		log.Printf("%v  	%v", peer.addressPort, peer.lastSeen)
 	}
 	log.Print("----------------------------------------------------------------------------------")
@@ -184,7 +200,7 @@ func HandlePeerAdd(w http.ResponseWriter, r *http.Request) {
 	defer trace.Exited("PeerList:HandlePeerAdd endpoint")
 	parts := strings.Split(r.RequestURI, "?")
 	if len(parts) > 1 {
-		log.Printf("Adding host %v to the peerlist\n", parts[1])
+		// log.Printf("Adding host %v to the peerlist\n", parts[1])
 		Peers.LocalAdd(parts[1])
 	}
 }
@@ -206,7 +222,9 @@ func HandlePeerList(w http.ResponseWriter, r *http.Request) {
 	defer trace.Exited("PeerList:HandlePeerList endpoint")
 
 	var result []string
-	for _, peer := range Peers {
+	Peers.rw.Lock()
+	defer Peers.rw.Unlock()
+	for _, peer := range Peers.Users {
 		result = append(result, string(peer.addressPort))
 	}
 
@@ -228,11 +246,12 @@ func (p *PeerList) HandleKeepAlive(w http.ResponseWriter, r *http.Request) {
 	if len(sender) <= 1 {
 		return
 	}
-	peer := Peers[sender[1]]
+	peer := Peers.Users[sender[1]]
 	if peer == nil {
 		return
 	}
 	peer.lastSeen = time.Now()
 	log.Printf("HandleKeepAlive from %v", sender[1])
+	p.RemoteAddToAll(sender[1])
 	fmt.Fprintf(w, "I'm still here...")
 }
