@@ -163,13 +163,12 @@ func (p *PeerList) LocalAdd(hostPort string) {
 func (p *PeerList) LocalDelete(hostPort string) {
 	trace.Entered("PeerList:LocalDelete")
 	defer trace.Exited("PeerList:LocalDelete")
-	Peers.rw.Lock()
 	if len(Peers.Users) > 2 {
-		delete(Peers.Users, hostPort)
+		p.rw.Lock()
+		defer p.rw.Unlock()
+		delete(p.Users, hostPort)
 		log.Printf("Removing host %v from the peerlist\n", hostPort)
-		defer Peers.rw.Unlock()
 	} else {
-		Peers.rw.Unlock()
 		p.RemoteGet(hostPort)
 	}
 }
@@ -256,6 +255,6 @@ func (p *PeerList) HandleKeepAlive(w http.ResponseWriter, r *http.Request) {
 	peer.lastSeen = time.Now()
 	// log.Printf("HandleKeepAlive from %v", sender[1])
 	p.LocalAdd(sender[1])
-	p.RemoteAddToAll(sender[1])
+	// p.RemoteAddToAll(sender[1])
 	fmt.Fprintf(w, "I'm still here...")
 }
