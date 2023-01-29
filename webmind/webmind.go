@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"github.com/Moorelife/WebMind/internal/webmind"
+	"github.com/Moorelife/WebMind/internal/localnode"
 )
 
 // WebMind in its current state is JUST A LEARNING EXPERIMENT,
@@ -10,13 +9,12 @@ import (
 // Please understand that you use the program at your own risk!!!
 
 func main() {
-	ctx := webmind.ParseArgsToContext()
-	ctx, logFile := webmind.SetupLogging(ctx)
-	ctx = webmind.RetrievePublicAddress(ctx)
-
-	webmind.CreateAndRetrievePeerList(ctx)
-	webmind.SendPeerAddRequests(ctx)
-	webmind.StartSendingKeepAlive(ctx)
-	webmind.SetupExitHandler(ctx, logFile)
-	webmind.HandleRequests(fmt.Sprintf("%s", ctx.Value("port")))
+	localNode := localnode.NewLocalNode()
+	localNode.SetupLogging()
+	localNode.RetrievePublicAddress()
+	localNode.CreateAndRetrievePeerList()
+	localNode.SendPeerAddRequests()
+	localNode.StartSendingKeepAlive()
+	localNode.SetupExitHandler()
+	localNode.HandleRequests()
 }
