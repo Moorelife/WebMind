@@ -151,7 +151,7 @@ func (p *PeerList) LocalDelete(addressToDelete string) {
 // It refuses to delete the local address, or the last remaining remote address.
 func (p *PeerList) CleanPeerList(localAddress string) {
 	for _, peer := range p.Users {
-		if !peer.Is(localAddress) && peer.timedOut() {
+		if !peer.is(localAddress) && peer.timedOut() {
 			p.LocalDelete(peer.addressPort)
 		}
 	}
@@ -167,7 +167,7 @@ func (p *PeerList) LogLocalList(fullList bool) {
 	log.Print("----------------------------------------------------------------------------------")
 	log.Printf("Address 			LastSeen         COUNT: %v", len(p.Users))
 	for _, peer := range p.Users {
-		peer.Log()
+		peer.log()
 	}
 	log.Print("----------------------------------------------------------------------------------")
 }
@@ -224,7 +224,7 @@ func (p *PeerList) HandleKeepAlive(w http.ResponseWriter, r *http.Request) {
 	if peer == nil {
 		peer = NewPeer(sender[1])
 	}
-	peer.Refresh()
+	peer.refresh()
 	// log.Printf("HandleKeepAlive from %v", sender[1])
 	p.LocalAdd(sender[1])
 	// p.RemoteAddToAll(sender[1])

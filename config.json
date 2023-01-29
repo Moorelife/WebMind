@@ -1,0 +1,22 @@
+{
+	"Monitor": {
+		"LocalPort": 14285,
+		"LocalAddress": "192.168.2.111"
+	},
+	"LocalTrinity": {
+		"LocalNodes": [
+			{
+				"LocalPort": 11001,
+				"LocalAddress": "192.168.2.111"
+			},
+			{
+				"LocalPort": 11004,
+				"LocalAddress": "192.168.2.111"
+			},
+			{
+				"LocalPort": 11002,
+				"LocalAddress": "192.168.2.111"
+			}
+		]
+	}
+}

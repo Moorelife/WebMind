@@ -2,7 +2,6 @@ package localnode
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -20,33 +19,25 @@ import (
 
 type LocalNode struct {
 	// Arguments from command line
-	OriginsFile *string // filename of the file specifying the origin node addresses.
-	LocalPort   *string // port number for this instance of the program.
-	FullList    *bool   // specifies if full peer list is logged instead of just count.
-	Trace       *bool   // specifies if call trace log statements are executed.
+	originsFile *string //`json:"originsfile"`
+	LocalPort   *int    //`json:"local_port"`
+	fullList    *bool   //`json:"full_list"`
+	trace       *bool   //`json:"trace"`
 
 	// Derived data we need to keep for easy access.
-	LocalAddress string   // combination of public IP and port number of the local node.
-	LogFile      *os.File // maintains the file handle of the log file, to close on exit.
+	LocalAddress string //`json:"local_address"`
+	logFile      *os.File
 
 	// Core Data
-	Peers *peerlist.PeerList // core data: the local node's peer list.
+	peers *peerlist.PeerList // core data: the local node's peer list.
 }
 
-func NewLocalNode() *LocalNode {
-	private := LocalNode{}
-	private.parseArgs()
-	private.LocalAddress = ip.GetPublicIP() + ":" + *private.LocalPort
-	private.Peers = peerlist.NewPeerList()
-	return &private
-}
-
-func (l *LocalNode) parseArgs() {
-	l.OriginsFile = flag.String("origins", "./origins.json", "origins list file")
-	l.LocalPort = flag.String("port", "7777", "http server port number")
-	l.FullList = flag.Bool("full", true, "switch to list peers, not just list count")
-	l.Trace = flag.Bool("trace", true, "switch to activate call tracing")
-	flag.Parse()
+func NewLocalNode(address string, port int) *LocalNode {
+	creation := LocalNode{
+		LocalPort:    &port,
+		LocalAddress: address,
+	}
+	return &creation
 }
 
 // SetupLogging sets up logging and stores logging related arguments in the LocalNode struct if needed.
@@ -87,9 +78,9 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 	trace.Entered("WebMind:Internal:CreateAndRetrievePeerList")
 	defer trace.Exited("WebMind:Internal:CreateAndRetrievePeerList")
 
-	l.Peers.LocalAdd(l.LocalAddress)
+	l.peers.LocalAdd(l.LocalAddress)
 
-	origins, err := os.ReadFile(*l.OriginsFile)
+	origins, err := os.ReadFile(*l.originsFile)
 	if err != nil || len(origins) == 0 {
 		log.Printf("os.ReadFile() returned no data: %v", err)
 	}
@@ -102,7 +93,7 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 	}
 
 	for _, origin := range originList {
-		go l.Peers.RemoteGet(origin)
+		go l.peers.RemoteGet(origin)
 	}
 }
 
@@ -111,7 +102,7 @@ func (l *LocalNode) SendPeerAddRequests() {
 	trace.Entered("WebMind:Internal:SendPeerAddRequests")
 	defer trace.Exited("WebMind:Internal:SendPeerAddRequests")
 	log.Printf("PEERLIST: %v", l)
-	l.Peers.RemoteAddToAll(l.LocalAddress)
+	l.peers.RemoteAddToAll(l.LocalAddress)
 }
 
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
@@ -124,10 +115,10 @@ func (l *LocalNode) SetupExitHandler() {
 	go func() {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
-			l.Peers.LocalDelete(l.LocalAddress)
-			l.Peers.RemoteDeleteToAll(l.LocalAddress)
+			l.peers.LocalDelete(l.LocalAddress)
+			l.peers.RemoteDeleteToAll(l.LocalAddress)
 
-			l.LogFile.Close()
+			l.logFile.Close()
 			os.Exit(0)
 		}
 	}()
@@ -135,10 +126,10 @@ func (l *LocalNode) SetupExitHandler() {
 
 func (l *LocalNode) HandleRequests() {
 	http.HandleFunc("/", HandleServerRootRequests)
-	http.HandleFunc("/peer/add", l.Peers.HandlePeerAdd)
-	http.HandleFunc("/peer/list", l.Peers.HandlePeerList)
-	http.HandleFunc("/peer/delete", l.Peers.HandlePeerDelete)
-	http.HandleFunc("/peer/keepalive", l.Peers.HandleKeepAlive)
+	http.HandleFunc("/peer/add", l.peers.HandlePeerAdd)
+	http.HandleFunc("/peer/list", l.peers.HandlePeerList)
+	http.HandleFunc("/peer/delete", l.peers.HandlePeerDelete)
+	http.HandleFunc("/peer/keepalive", l.peers.HandleKeepAlive)
 
 	log.Fatal(http.ListenAndServe(l.LocalAddress, nil))
 }
@@ -151,7 +142,7 @@ func (l *LocalNode) StartSendingKeepAlive() {
 	go func() {
 		for true {
 			log.Printf("SendKeepAlives still running")
-			for key, _ := range l.Peers.Users {
+			for key, _ := range l.peers.Users {
 				if key != l.LocalAddress {
 					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, l.LocalAddress)
 					log.Printf("sending keepalive to %v", key)
@@ -161,8 +152,8 @@ func (l *LocalNode) StartSendingKeepAlive() {
 					}
 				}
 			}
-			l.Peers.CleanPeerList(l.LocalAddress)
-			l.Peers.LogLocalList(*l.FullList)
+			l.peers.CleanPeerList(l.LocalAddress)
+			l.peers.LogLocalList(*l.fullList)
 			time.Sleep(peerlist.KeepAliveInterval)
 		}
 		log.Print("***************************************************")
