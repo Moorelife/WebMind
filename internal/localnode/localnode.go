@@ -19,18 +19,25 @@ import (
 )
 
 type LocalNode struct {
-	OriginsFile  *string  // command line: filename of the file specifying the origin node addresses.
-	LocalAddress string   // calculated: combination of public IP and port number of the local node.
-	LocalPort    *string  // command line: port number for this instance of the program.
-	FullList     *bool    // command line: specifies if full peer list is logged instead of just count.
-	Trace        *bool    // command line: specifies if call trace log statements are executed.
-	LogFile      *os.File // logging: maintains the file handle of the log file, to close on exit.
+	// Arguments from command line
+	OriginsFile *string // filename of the file specifying the origin node addresses.
+	LocalPort   *string // port number for this instance of the program.
+	FullList    *bool   // specifies if full peer list is logged instead of just count.
+	Trace       *bool   // specifies if call trace log statements are executed.
+
+	// Derived data we need to keep for easy access.
+	LocalAddress string   // combination of public IP and port number of the local node.
+	LogFile      *os.File // maintains the file handle of the log file, to close on exit.
+
+	// Core Data
+	Peers *peerlist.PeerList // core data: the local node's peer list.
 }
 
 func NewLocalNode() *LocalNode {
 	private := LocalNode{}
 	private.parseArgs()
 	private.LocalAddress = ip.GetPublicIP() + ":" + *private.LocalPort
+	private.Peers = peerlist.NewPeerList()
 	return &private
 }
 
@@ -80,7 +87,7 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 	trace.Entered("WebMind:Internal:CreateAndRetrievePeerList")
 	defer trace.Exited("WebMind:Internal:CreateAndRetrievePeerList")
 
-	peerlist.Peers.LocalAdd(l.LocalAddress)
+	l.Peers.LocalAdd(l.LocalAddress)
 
 	origins, err := os.ReadFile(*l.OriginsFile)
 	if err != nil || len(origins) == 0 {
@@ -95,7 +102,7 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 	}
 
 	for _, origin := range originList {
-		go peerlist.Peers.RemoteGet(origin)
+		go l.Peers.RemoteGet(origin)
 	}
 }
 
@@ -103,8 +110,8 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 func (l *LocalNode) SendPeerAddRequests() {
 	trace.Entered("WebMind:Internal:SendPeerAddRequests")
 	defer trace.Exited("WebMind:Internal:SendPeerAddRequests")
-	log.Printf("PEERLIST: %v", peerlist.Peers)
-	peerlist.Peers.RemoteAddToAll(l.LocalAddress)
+	log.Printf("PEERLIST: %v", l)
+	l.Peers.RemoteAddToAll(l.LocalAddress)
 }
 
 // SetupExitHandler catches the Ctrl-C signal and executes any needed cleanup.
@@ -117,8 +124,8 @@ func (l *LocalNode) SetupExitHandler() {
 	go func() {
 		for sig := range c {
 			log.Printf("***** Ctrl-C pressed: %v *****\n", sig)
-			peerlist.Peers.LocalDelete(l.LocalAddress)
-			peerlist.Peers.RemoteDeleteToAll(l.LocalAddress)
+			l.Peers.LocalDelete(l.LocalAddress)
+			l.Peers.RemoteDeleteToAll(l.LocalAddress)
 
 			l.LogFile.Close()
 			os.Exit(0)
@@ -128,10 +135,10 @@ func (l *LocalNode) SetupExitHandler() {
 
 func (l *LocalNode) HandleRequests() {
 	http.HandleFunc("/", HandleServerRootRequests)
-	http.HandleFunc("/peer/add", peerlist.HandlePeerAdd)
-	http.HandleFunc("/peer/list", peerlist.HandlePeerList)
-	http.HandleFunc("/peer/delete", peerlist.HandlePeerDelete)
-	http.HandleFunc("/peer/keepalive", peerlist.Peers.HandleKeepAlive)
+	http.HandleFunc("/peer/add", l.Peers.HandlePeerAdd)
+	http.HandleFunc("/peer/list", l.Peers.HandlePeerList)
+	http.HandleFunc("/peer/delete", l.Peers.HandlePeerDelete)
+	http.HandleFunc("/peer/keepalive", l.Peers.HandleKeepAlive)
 
 	log.Fatal(http.ListenAndServe(l.LocalAddress, nil))
 }
@@ -144,7 +151,7 @@ func (l *LocalNode) StartSendingKeepAlive() {
 	go func() {
 		for true {
 			log.Printf("SendKeepAlives still running")
-			for key, _ := range peerlist.Peers.Users {
+			for key, _ := range l.Peers.Users {
 				if key != l.LocalAddress {
 					url := fmt.Sprintf("http://%v/peer/keepalive?%v", key, l.LocalAddress)
 					log.Printf("sending keepalive to %v", key)
@@ -154,8 +161,8 @@ func (l *LocalNode) StartSendingKeepAlive() {
 					}
 				}
 			}
-			peerlist.Peers.CleanPeerList(l.LocalAddress)
-			peerlist.Peers.LogLocalList(*l.FullList)
+			l.Peers.CleanPeerList(l.LocalAddress)
+			l.Peers.LogLocalList(*l.FullList)
 			time.Sleep(peerlist.KeepAliveInterval)
 		}
 		log.Print("***************************************************")
