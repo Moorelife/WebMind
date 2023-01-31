@@ -3,14 +3,13 @@ package peerlist
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Moorelife/WebMind/internal/webmind1/trace"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/Moorelife/WebMind/internal/trace"
 )
 
 var KeepAliveInterval = 30 * time.Second

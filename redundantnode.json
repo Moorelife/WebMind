@@ -1,0 +1,22 @@
+{
+	"Monitor": {
+		"LocalAddress": "192.168.2.111",
+		"LocalPort": 14285
+	},
+	"GroupNodes": {
+		"LocalNodes": [
+			{
+				"LocalAddress": "192.168.2.111",
+				"LocalPort": 14001
+			},
+			{
+				"LocalAddress": "192.168.2.111",
+				"LocalPort": 14004
+			},
+			{
+				"LocalAddress": "192.168.2.111",
+				"LocalPort": 14002
+			}
+		]
+	}
+}

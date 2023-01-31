@@ -3,40 +3,40 @@ package localnode
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Moorelife/WebMind/internal/webmind1/ip"
+	"github.com/Moorelife/WebMind/internal/webmind1/peerlist"
+	"github.com/Moorelife/WebMind/internal/webmind1/trace"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/Moorelife/WebMind/internal/ip"
-	"github.com/Moorelife/WebMind/internal/peerlist"
-	"github.com/Moorelife/WebMind/internal/trace"
 )
 
 type LocalNode struct {
-	// Arguments from command line
-	originsFile *string //`json:"originsfile"`
-	LocalPort   *int    //`json:"local_port"`
-	fullList    *bool   //`json:"full_list"`
-	trace       *bool   //`json:"trace"`
+	LocalAddress string `json:"LocalAddress"`
+	LocalPort    int    `json:"LocalPort"`
 
-	// Derived data we need to keep for easy access.
-	LocalAddress string //`json:"local_address"`
-	logFile      *os.File
+	OriginsFile string
+	FullList    bool
+	Trace       bool
 
-	// Core Data
-	peers *peerlist.PeerList // core data: the local node's peer list.
+	peers *peerlist.PeerList
+
+	logFile *os.File
 }
 
 func NewLocalNode(address string, port int) *LocalNode {
 	creation := LocalNode{
-		LocalPort:    &port,
 		LocalAddress: address,
+		LocalPort:    port,
+		peers:        peerlist.NewPeerList(),
 	}
+
 	return &creation
 }
 
@@ -47,7 +47,7 @@ func (l *LocalNode) SetupLogging() {
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile | log.Lmsgprefix)
 
-	logFileName := fmt.Sprintf("..\\..\\logs\\%v.log", *l.LocalPort)
+	logFileName := fmt.Sprintf("%v.log", l.LocalPort)
 
 	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
@@ -57,7 +57,7 @@ func (l *LocalNode) SetupLogging() {
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
-	log.Printf("WebMind started on port %v", *l.LocalPort)
+	log.Printf("started on port %v", l.LocalPort)
 }
 
 // RetrievePublicAddress retrieves the public address and places it in the LocalNode struct.
@@ -66,7 +66,7 @@ func (l *LocalNode) RetrievePublicAddress() {
 	defer trace.Exited("WebMind:Internal:RetrievePublicAddress")
 
 	address := ip.GetPublicIP()
-	address = fmt.Sprintf("%v:%v", strings.Trim(address, " "), *l.LocalPort)
+	address = fmt.Sprintf("%v:%v", strings.Trim(address, " "), l.LocalPort)
 	err := os.Setenv("WEBMIND_LOCALPEER", address)
 	if err != nil {
 		log.Printf("Could not set WEBMIND_LOCALPEER environment variable")
@@ -80,15 +80,15 @@ func (l *LocalNode) CreateAndRetrievePeerList() {
 
 	l.peers.LocalAdd(l.LocalAddress)
 
-	origins, err := os.ReadFile(*l.originsFile)
+	origins, err := os.ReadFile(l.OriginsFile)
 	if err != nil || len(origins) == 0 {
-		log.Printf("os.ReadFile() returned no data: %v", err)
+		panic(fmt.Sprintf("os.ReadFile() returned no data: %v", err))
 	}
 	originList := make([]string, 1)
 
 	err = json.Unmarshal(origins, &originList)
 	if err != nil {
-		log.Printf("Unmarshalling originsList failed: %v", err)
+		panic(fmt.Sprintf("Unmarshalling originsList failed: %v", err))
 		return
 	}
 
@@ -131,7 +131,8 @@ func (l *LocalNode) HandleRequests() {
 	http.HandleFunc("/peer/delete", l.peers.HandlePeerDelete)
 	http.HandleFunc("/peer/keepalive", l.peers.HandleKeepAlive)
 
-	log.Fatal(http.ListenAndServe(l.LocalAddress, nil))
+	localAddress := l.LocalAddress + ":" + strconv.Itoa(l.LocalPort)
+	log.Fatal(http.ListenAndServe(localAddress, nil))
 }
 
 // StartSendingKeepAlive starts a go routine that sends a /keepalive request to all peers every two seconds.
@@ -153,7 +154,7 @@ func (l *LocalNode) StartSendingKeepAlive() {
 				}
 			}
 			l.peers.CleanPeerList(l.LocalAddress)
-			l.peers.LogLocalList(*l.fullList)
+			l.peers.LogLocalList(l.FullList)
 			time.Sleep(peerlist.KeepAliveInterval)
 		}
 		log.Print("***************************************************")

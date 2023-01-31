@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"github.com/Moorelife/WebMind/internal/localnode"
-	"github.com/Moorelife/WebMind/internal/oneness"
+	"github.com/Moorelife/WebMind/internal/redundantnode"
+	"github.com/Moorelife/WebMind/internal/webmind1/localnode"
 	"log"
 	"os"
 )
@@ -18,14 +18,14 @@ import (
 func main() {
 	address := flag.String("address", "localhost", "IPv4 address of the monitor and the local nodes.")
 	monitorPort := flag.Int("port", 11000, "port number for the monitor node.")
-	t1Port := flag.Int("t1", 0, "port number for the trinity node 1, 0 means monitorPort + 1.")
-	t2Port := flag.Int("t2", 0, "port number for the trinity node 2, 0 means monitorPort + 2.")
-	t3Port := flag.Int("t3", 0, "port number for the trinity node 3, 0 means monitorPort + 3.")
-	configFilename := flag.String("file", "webmind.json", "filename to write the configuration into.")
+	t1Port := flag.Int("t1", 0, "port number for the subnode 1, 0 means monitorPort + 1.")
+	t2Port := flag.Int("t2", 0, "port number for the subnode 2, 0 means monitorPort + 2.")
+	t3Port := flag.Int("t3", 0, "port number for the subnode 3, 0 means monitorPort + 3.")
+	filename := flag.String("file", "redundantnode.json", "filename of the configuration file.")
 	flag.Parse()
 
 	monitor := localnode.NewLocalNode(*address, *monitorPort)
-	redundant := oneness.NewOneness(*monitor, []int{*t1Port, *t2Port, *t3Port})
+	redundant := redundantnode.NewRedundantNode(*monitor, []int{*t1Port, *t2Port, *t3Port})
 
 	jsonText, err := json.Marshal(redundant)
 	if err != nil {
@@ -38,7 +38,7 @@ func main() {
 		log.Printf("Indent failed: %v", err)
 	}
 
-	file, err := os.OpenFile(*configFilename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 644)
+	file, err := os.OpenFile(*filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 644)
 	_, err = out.WriteTo(file)
 	if err != nil {
 		log.Printf("Write to file failed: %v", err)

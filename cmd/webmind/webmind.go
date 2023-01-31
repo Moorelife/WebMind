@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/Moorelife/WebMind/internal/localnode"
+	"github.com/Moorelife/WebMind/internal/webmind1/localnode"
 	"log"
 )
 
@@ -10,29 +10,29 @@ import (
 // and as such can not be expected to be fit for any given purpose.
 // Please understand that you use the program at your own risk!!!
 
-type Oneness struct {
-	Monitor      localnode.LocalNode `json:"monitor`
-	LocalTrinity Trinity             `json:"local_trinity"`
+type RedundantNode struct {
+	Monitor         localnode.LocalNode `json:"monitor`
+	LocalGroupNodes GroupNodes          `json:"local_groupnodes"`
 }
 
-type Trinity struct {
+type GroupNodes struct {
 	LocalNodes []localnode.LocalNode `json:"localnodes"`
 }
 
-func NewOneness(monitor localnode.LocalNode, trinity []string) *Oneness {
-	var creation = Oneness{
+func NewRedundantNode(monitor localnode.LocalNode, groupnodes []string) *RedundantNode {
+	var creation = RedundantNode{
 		Monitor: monitor,
 	}
-	creation.LocalTrinity = *NewTrinity(monitor.LocalAddress, trinity)
+	creation.LocalGroupNodes = *NewGroupNodes(monitor.LocalAddress, groupnodes)
 
 	return &creation
 }
 
-func NewTrinity(address string, ports []string) *Trinity {
+func NewGroupNodes(address string, ports []string) *GroupNodes {
 	if len(ports) != 3 {
-		panic("trinity should have three ports")
+		panic("groupnodes should have three ports")
 	}
-	var creation = Trinity{
+	var creation = GroupNodes{
 		LocalNodes: make([]localnode.LocalNode, 3),
 	}
 	for key, value := range ports {
@@ -45,9 +45,9 @@ func main() {
 
 	localAddress := "192.168.2.111"
 	monitor := localnode.NewLocalNode(localAddress, "11000")
-	oneness := NewOneness(*monitor, []string{"11001", "11002", "11003"})
+	redundantnode := NewRedundantNode(*monitor, []string{"11001", "11002", "11003"})
 
-	jsonText, err := json.Marshal(oneness)
+	jsonText, err := json.Marshal(redundantnode)
 	if err != nil {
 		log.Println("Marshal failed!")
 	}

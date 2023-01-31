@@ -1,16 +1,18 @@
-package trinity
+package groupnodes
 
-import "github.com/Moorelife/WebMind/internal/localnode"
+import (
+	"github.com/Moorelife/WebMind/internal/webmind1/localnode"
+)
 
-type Trinity struct {
+type GroupNodes struct {
 	LocalNodes []localnode.LocalNode //`json:"localnodes"`
 }
 
-func NewTrinity(address string, ports []int) *Trinity {
+func NewGroupNodes(address string, ports []int) *GroupNodes {
 	if len(ports) != 3 {
-		panic("trinity should have three ports")
+		panic("groupnodes should have three ports")
 	}
-	var creation = Trinity{
+	var creation = GroupNodes{
 		LocalNodes: make([]localnode.LocalNode, 3),
 	}
 	for key, value := range ports {
