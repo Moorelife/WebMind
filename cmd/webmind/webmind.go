@@ -1,30 +1,23 @@
 package main
 
 import (
+	"log"
 	"net"
 
-	"github.com/Moorelife/WebMind/internal/webmind/system/node"
+	"github.com/Moorelife/WebMind/internal/webmind/system"
 )
 
 func main() {
-	address := net.IP{192, 168, 2, 111}
-	localNode := node.NewNode(address)
-	// localAddress := "192.168.2.111"
-	// monitor := localnode.NewLocalNode(localAddress, "11000")
-	// redundantnode := NewRedundantNode(*monitor, []string{"11001", "11002", "11003"})
-	//
-	// jsonText, err := json.Marshal(redundantnode)
-	// if err != nil {
-	//	log.Println("Marshal failed!")
-	// }
-	// log.Printf("%s", jsonText)
-	//
-	// localNode := localnode.NewLocalNode(localAddress, "11000")
-	// localNode.SetupLogging()
-	// localNode.RetrievePublicAddress()
-	// localNode.CreateAndRetrievePeerList()
-	// localNode.SendPeerAddRequests()
-	// localNode.StartSendingKeepAlive()
-	// localNode.SetupExitHandler()
-	// localNode.HandleRequests()
+	address := net.TCPAddr{
+		IP:   []byte{192, 168, 2, 111},
+		Port: 14285,
+	}
+	localNode := system.NewNode(address)
+	log.Println(localNode.ToJSON())
+
+	localWeb := system.NewWeb(address)
+	log.Println(localWeb.ToJSON())
+
+	localHive := system.NewHive(address)
+	log.Println(localHive.ToJSON())
 }
