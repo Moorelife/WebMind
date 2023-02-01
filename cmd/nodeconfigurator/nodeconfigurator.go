@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"github.com/Moorelife/WebMind/internal/redundantnode"
 	"github.com/Moorelife/WebMind/internal/webmind1/localnode"
+	"github.com/Moorelife/WebMind/internal/webmind1/redundantnode"
 	"log"
 	"os"
 )

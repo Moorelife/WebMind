@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/Moorelife/WebMind/internal/redundantnode"
+	"github.com/Moorelife/WebMind/internal/webmind1/redundantnode"
 	"log"
 	"os"
 )
