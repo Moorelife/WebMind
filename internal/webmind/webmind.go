@@ -3,9 +3,13 @@
 package webmind
 
 import (
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"sort"
+	"strings"
 )
 
 // WebMind contains programming that the system and process "classes" require.
@@ -13,6 +17,23 @@ type WebMind struct {
 }
 
 // General Utility functions =========================================
+
+// SetupLogging sets up logging and stores logging related arguments in the LocalNode struct if needed.
+func SetupLogging(program string) {
+	saneName := strings.Replace(program, ".", "_", -1)
+	saneName = strings.Replace(program, ":", "_", -1)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile | log.Lmsgprefix)
+
+	logFileName := fmt.Sprintf("%v.log", saneName)
+
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(mw)
+}
 
 func PrintRequest(r *http.Request) {
 	log.Printf("-   Remote address: %v", r.RemoteAddr)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Moorelife/WebMind/internal/webmind"
 	"log"
 	"net"
 
@@ -9,9 +10,10 @@ import (
 
 func main() {
 	address := net.TCPAddr{
-		IP:   []byte{192, 168, 2, 111},
+		IP:   []byte{0, 0, 0, 0}, // accept any connection
 		Port: 14285,
 	}
+	webmind.SetupLogging(address.String())
 	constructAndPrintStructs(address)
 	log.Printf("Starting Web interface at: %s", address.String())
 	node := system.NewNode(address)
