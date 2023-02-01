@@ -2,10 +2,9 @@ package main
 
 import (
 	"github.com/Moorelife/WebMind/internal/webmind"
+	"github.com/Moorelife/WebMind/internal/webmind/system"
 	"log"
 	"net"
-
-	"github.com/Moorelife/WebMind/internal/webmind/system"
 )
 
 func main() {
@@ -14,9 +13,14 @@ func main() {
 		Port: 14285,
 	}
 	webmind.SetupLogging(address.String())
+
 	constructAndPrintStructs(address)
-	log.Printf("Starting Web interface at: %s", address.String())
+	log.Print("=======================================================================")
+	log.Printf("         Starting Web interface at: %s", address.String())
+	log.Print("=======================================================================")
 	node := system.NewNode(address)
+
+	log.Printf("Entering node.Start()")
 	node.Start()
 }
 

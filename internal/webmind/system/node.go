@@ -2,11 +2,15 @@ package system
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Moorelife/WebMind/internal/webmind"
+	"log"
 	"net"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // Struct and Constructor ============================================
@@ -14,33 +18,70 @@ import (
 // Node defines the data required to define a node system.
 type Node struct {
 	Address net.TCPAddr `json:"Address"` // the address of the node.
+
+	server http.Server
+	wg     sync.WaitGroup
 }
 
 // NewNode creates a new Node structure and returns a pointer to it
 func NewNode(address net.TCPAddr) *Node {
-	node := Node{Address: address}
+	log.Printf("Creating node.WaitGroup")
+	node := Node{Address: address, wg: sync.WaitGroup{}}
 	return &node
 }
 
 // Core functionality ================================================
 
 func (n *Node) Start() {
-	http.HandleFunc("/", HandleServerRootRequests)
+	http.HandleFunc("/", n.HandleRoot)
+	http.HandleFunc("/kill", n.HandleKill)
+	http.HandleFunc("/heartbeat", n.HandleHeartbeat)
 
-	err := http.ListenAndServe(n.Address.String(), nil)
-	if err != nil {
-		panic(fmt.Sprintf("ListenAndServe ended: %v", err))
-	}
+	log.Printf("Creating node.server")
+	n.wg.Add(1)
+	log.Printf("wg.Add(1) called")
+	n.server = http.Server{Addr: n.Address.String(), Handler: nil}
+	log.Printf("Created node.server")
+
+	go func() {
+		// always returns error. ErrServerClosed on graceful close
+		log.Printf("calling wg.Add()")
+		log.Printf("Entering server.ListenAndServe()")
+		if err := n.server.ListenAndServe(); err != http.ErrServerClosed {
+			// unexpected error. port in use?
+			log.Fatalf("Error in ListenAndServe(): %v", err)
+		}
+	}()
+	log.Printf("calling wg.Wait()")
+	n.wg.Wait()
 }
 
 // WebHandler endpoints ==============================================
 
-func HandleServerRootRequests(w http.ResponseWriter, r *http.Request) {
+func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-
 	webmind.PrintRequest(r)
-
+	log.Printf("Entering HandleRoot()")
 	fmt.Fprintf(w, "Node up and running!")
+}
+
+func (n *Node) HandleKill(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	log.Printf("Entering HandleKill()")
+	fmt.Fprintf(w, "Server killed!")
+	// time.Sleep(3 * time.Second)
+	log.Printf("calling server.Shutdown()")
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+	n.server.Shutdown(ctx)
+	log.Printf("calling wg.Done()")
+	n.wg.Done()
+	log.Printf("called wg.Done()")
+}
+
+func (n *Node) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	log.Printf("Handling Heartbeat")
+	fmt.Fprintf(w, "Heartbeat answered!")
 }
 
 // Utility functions =================================================

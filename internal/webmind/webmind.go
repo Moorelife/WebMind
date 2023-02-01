@@ -21,7 +21,7 @@ type WebMind struct {
 // SetupLogging sets up logging and stores logging related arguments in the LocalNode struct if needed.
 func SetupLogging(program string) {
 	saneName := strings.Replace(program, ".", "_", -1)
-	saneName = strings.Replace(program, ":", "_", -1)
+	saneName = strings.Replace(saneName, ":", "_", -1)
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile | log.Lmsgprefix)
 
 	logFileName := fmt.Sprintf("%v.log", saneName)
