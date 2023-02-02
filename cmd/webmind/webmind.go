@@ -5,6 +5,9 @@ import (
 	"github.com/Moorelife/WebMind/internal/webmind/system"
 	"log"
 	"net"
+	"os"
+	"os/exec"
+	"time"
 )
 
 func main() {
@@ -18,10 +21,19 @@ func main() {
 	log.Print("=======================================================================")
 	log.Printf("         Starting Web interface at: %s", address.String())
 	log.Print("=======================================================================")
-	node := system.NewNode(address)
 
-	log.Printf("Entering node.Start()")
+	node := system.NewNode(address)
 	node.Start()
+	log.Printf("Ending program, restarting")
+	Phoenix()
+}
+
+func Phoenix() {
+	cmd := exec.Command("B:\\webmind.exe")
+	cmd.Start()
+	log.Printf("Phoenix has risen!!!")
+	time.Sleep(5 * time.Second)
+	os.Exit(1)
 }
 
 // Saved Experiments =================================================

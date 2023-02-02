@@ -61,26 +61,25 @@ func (n *Node) Start() {
 func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	webmind.PrintRequest(r)
-	log.Printf("Entering HandleRoot()")
+	log.Printf("Handling /")
 	fmt.Fprintf(w, "Node up and running!")
 }
 
 func (n *Node) HandleKill(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	log.Printf("Entering HandleKill()")
-	fmt.Fprintf(w, "Server killed!")
-	// time.Sleep(3 * time.Second)
-	log.Printf("calling server.Shutdown()")
-	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+	fmt.Fprintf(w, "Killing webserver!")
+	ctx, err := context.WithTimeout(context.Background(), 1*time.Second)
+	if err != nil {
+
+	}
 	n.server.Shutdown(ctx)
-	log.Printf("calling wg.Done()")
+	log.Printf("Handling /kill")
 	n.wg.Done()
-	log.Printf("called wg.Done()")
 }
 
 func (n *Node) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	log.Printf("Handling Heartbeat")
+	log.Printf("Handling /heartbeat")
 	fmt.Fprintf(w, "Heartbeat answered!")
 }
 
