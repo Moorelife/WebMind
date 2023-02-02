@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 )
@@ -33,6 +34,13 @@ func SetupLogging(program string) {
 
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
+}
+
+func Phoenix(port string) {
+	cmd := exec.Command("C:\\Users\\Moorelife\\Desktop\\JOURNAL\\PROJECTS\\20230118 WebMind\\WEBMIND\\WebMind\\cmd\\node\\node.exe", "--port", port)
+	log.Printf("CMD: %#v", cmd)
+	cmd.Start()
+	log.Printf("Phoenix has risen!!!")
 }
 
 func PrintRequest(r *http.Request) {

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -21,12 +22,16 @@ type Node struct {
 
 	server http.Server
 	wg     sync.WaitGroup
+	ctime  time.Time
+
+	// temporary stuff
+	OtherPort int
 }
 
 // NewNode creates a new Node structure and returns a pointer to it
 func NewNode(address net.TCPAddr) *Node {
 	log.Printf("Creating node.WaitGroup")
-	node := Node{Address: address, wg: sync.WaitGroup{}}
+	node := Node{Address: address, wg: sync.WaitGroup{}, ctime: time.Now()}
 	return &node
 }
 
@@ -35,24 +40,20 @@ func NewNode(address net.TCPAddr) *Node {
 func (n *Node) Start() {
 	http.HandleFunc("/", n.HandleRoot)
 	http.HandleFunc("/kill", n.HandleKill)
+	http.HandleFunc("/spawn", n.HandleSpawn)
 	http.HandleFunc("/heartbeat", n.HandleHeartbeat)
 
 	log.Printf("Creating node.server")
 	n.wg.Add(1)
-	log.Printf("wg.Add(1) called")
 	n.server = http.Server{Addr: n.Address.String(), Handler: nil}
 	log.Printf("Created node.server")
 
 	go func() {
-		// always returns error. ErrServerClosed on graceful close
-		log.Printf("calling wg.Add()")
 		log.Printf("Entering server.ListenAndServe()")
 		if err := n.server.ListenAndServe(); err != http.ErrServerClosed {
-			// unexpected error. port in use?
 			log.Fatalf("Error in ListenAndServe(): %v", err)
 		}
 	}()
-	log.Printf("calling wg.Wait()")
 	n.wg.Wait()
 }
 
@@ -62,7 +63,7 @@ func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	webmind.PrintRequest(r)
 	log.Printf("Handling /")
-	fmt.Fprintf(w, "Node up and running!")
+	fmt.Fprintf(w, "Node up and running! (%v)", time.Now().Sub(n.ctime))
 }
 
 func (n *Node) HandleKill(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +76,13 @@ func (n *Node) HandleKill(w http.ResponseWriter, r *http.Request) {
 	n.server.Shutdown(ctx)
 	log.Printf("Handling /kill")
 	n.wg.Done()
+}
+
+func (n *Node) HandleSpawn(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	log.Printf("Handling /spawn")
+	fmt.Fprintf(w, "Spawning new node!")
+	webmind.Phoenix(strconv.Itoa(n.OtherPort))
 }
 
 func (n *Node) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
