@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 )
 
@@ -27,7 +26,7 @@ func SetupLogging(program string) {
 
 	logFileName := fmt.Sprintf("%v.log", saneName)
 
-	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -36,11 +35,11 @@ func SetupLogging(program string) {
 	log.SetOutput(mw)
 }
 
-func Phoenix(port string) {
-	cmd := exec.Command("C:\\Users\\Moorelife\\Desktop\\JOURNAL\\PROJECTS\\20230118 WebMind\\WEBMIND\\WebMind\\cmd\\node\\node.exe", "--port", port)
+func StartNode(port string) {
+	cmd := exec.Command("C:\\Users\\Moorelife\\Desktop\\JOURNAL\\PROJECTS\\20230118 WebMind\\WEBMIND\\WebMind\\cmd\\node\\startnode.cmd", port)
 	log.Printf("CMD: %#v", cmd)
 	cmd.Start()
-	log.Printf("Phoenix has risen!!!")
+	log.Printf("StartNode has risen!!!")
 }
 
 func PrintRequest(r *http.Request) {
@@ -48,30 +47,5 @@ func PrintRequest(r *http.Request) {
 	log.Printf("-   Request URI %v", r.RequestURI)
 	log.Printf("-   Address: %v", r.Host)
 	log.Printf("-   Method: %v", r.Method)
-	log.Printf("-   ContentLength: %v", r.ContentLength)
 	log.Println("-   Header:")
-	printHeaderMap(r.Header)
-}
-
-func printHeaderMap(header http.Header) {
-	type KeyValue struct {
-		Key   string
-		Value []string
-	}
-
-	s := make([]KeyValue, 0, len(header))
-
-	for k, v := range header {
-		s = append(s, KeyValue{k, v})
-	}
-
-	sort.SliceStable(s, func(i, j int) bool {
-		return s[i].Key < s[j].Key
-	})
-
-	for _, v := range s {
-		// if v.Key == "User-Agent" {
-		log.Println("-      ", v.Key, ": ", v.Value)
-		// }
-	}
 }

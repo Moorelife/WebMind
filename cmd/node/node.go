@@ -25,7 +25,7 @@ func main() {
 	node.OtherPort = 11000
 	node.Start()
 
-	log.Printf("Ending program, restarting")
+	log.Printf("Ending program =================================")
 }
 
 // Saved Experiments =================================================

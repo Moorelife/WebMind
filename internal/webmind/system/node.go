@@ -82,7 +82,7 @@ func (n *Node) HandleSpawn(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Printf("Handling /spawn")
 	fmt.Fprintf(w, "Spawning new node!")
-	webmind.Phoenix(strconv.Itoa(n.OtherPort))
+	webmind.StartNode(strconv.Itoa(n.OtherPort))
 }
 
 func (n *Node) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
