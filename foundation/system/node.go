@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -77,8 +78,33 @@ func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 func (n *Node) HandleStartup(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Printf("Handling /startup")
+	n.OtherPort = n.getPortFromRequest(r)
 	fmt.Fprintf(w, "Starting up new node!")
 	foundation.StartNode(strconv.Itoa(n.OtherPort))
+}
+
+func (n *Node) getPortFromRequest(r *http.Request) int {
+	parts := strings.Split(r.RequestURI, "?")
+	if len(parts) < 2 {
+		return n.OtherPort
+	}
+	port, err := strconv.Atoi(parts[1])
+	if err == nil {
+		port = clamp(port, 0, 65535)
+	}
+	return port
+}
+
+func clamp(n, min, max int) int {
+	if n < min {
+		return min
+	}
+	
+	if n > max {
+		return max
+	}
+
+	return n
 }
 
 func (n *Node) HandleStatus(w http.ResponseWriter, r *http.Request) {
