@@ -1,6 +1,6 @@
 // Package webmind is the core code of WebMind 2.0.
 
-package webmind
+package foundation
 
 import (
 	"fmt"
@@ -36,10 +36,10 @@ func SetupLogging(program string) {
 }
 
 func StartNode(port string) {
-	cmd := exec.Command("C:\\Users\\Moorelife\\Desktop\\JOURNAL\\PROJECTS\\20230118 WebMind\\WEBMIND\\WebMind\\cmd\\node\\startnode.cmd", port)
-	log.Printf("CMD: %#v", cmd)
+	cmd := exec.Command("app\\services\\node\\startnode.cmd", port)
+	// log.Printf("CMD: %#v", cmd)
 	cmd.Start()
-	log.Printf("StartNode has risen!!!")
+	log.Printf("Node started on port %s", port)
 }
 
 func PrintRequest(r *http.Request) {
@@ -47,5 +47,4 @@ func PrintRequest(r *http.Request) {
 	log.Printf("-   Request URI %v", r.RequestURI)
 	log.Printf("-   Address: %v", r.Host)
 	log.Printf("-   Method: %v", r.Method)
-	log.Println("-   Header:")
 }

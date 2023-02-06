@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/Moorelife/WebMind/internal/webmind"
-	"github.com/Moorelife/WebMind/internal/webmind/system"
+	"github.com/Moorelife/WebMind/foundation"
+	"github.com/Moorelife/WebMind/foundation/system"
 	"log"
 	"net"
 )
@@ -16,9 +16,8 @@ func main() {
 		IP:   []byte{192, 168, 2, 111}, // accept any connection
 		Port: *port,
 	}
-	webmind.SetupLogging(address.String())
+	foundation.SetupLogging(address.String())
 
-	constructAndPrintStructs(address)
 	log.Printf("Starting Web interface at %s", address.String())
 
 	node := system.NewNode(address)
@@ -26,11 +25,4 @@ func main() {
 	node.Start()
 
 	log.Printf("Ending program =================================")
-}
-
-// Saved Experiments =================================================
-
-func constructAndPrintStructs(address net.TCPAddr) {
-	localNode := system.NewNode(address)
-	log.Println(localNode.ToJSON())
 }

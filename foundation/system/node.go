@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Moorelife/WebMind/internal/webmind"
+	"github.com/Moorelife/WebMind/foundation"
 	"log"
 	"net"
 	"net/http"
@@ -30,7 +30,6 @@ type Node struct {
 
 // NewNode creates a new Node structure and returns a pointer to it
 func NewNode(address net.TCPAddr) *Node {
-	log.Printf("Creating node.WaitGroup")
 	node := Node{Address: address, wg: sync.WaitGroup{}, ctime: time.Now()}
 	return &node
 }
@@ -39,17 +38,14 @@ func NewNode(address net.TCPAddr) *Node {
 
 func (n *Node) Start() {
 	http.HandleFunc("/", n.HandleRoot)
-	http.HandleFunc("/kill", n.HandleKill)
-	http.HandleFunc("/spawn", n.HandleSpawn)
-	http.HandleFunc("/heartbeat", n.HandleHeartbeat)
+	http.HandleFunc("/shutdown", n.HandleShutdown)
+	http.HandleFunc("/startup", n.HandleStartup)
+	http.HandleFunc("/status", n.HandleStatus)
 
-	log.Printf("Creating node.server")
 	n.wg.Add(1)
 	n.server = http.Server{Addr: n.Address.String(), Handler: nil}
-	log.Printf("Created node.server")
 
 	go func() {
-		log.Printf("Entering server.ListenAndServe()")
 		if err := n.server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("Error in ListenAndServe(): %v", err)
 		}
@@ -61,34 +57,34 @@ func (n *Node) Start() {
 
 func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	webmind.PrintRequest(r)
+	foundation.PrintRequest(r)
 	log.Printf("Handling /")
-	fmt.Fprintf(w, "Node up and running! (%v)", time.Now().Sub(n.ctime))
+	fmt.Fprintf(w, "Illegal request: %s", r.RequestURI)
 }
 
-func (n *Node) HandleKill(w http.ResponseWriter, r *http.Request) {
+func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	fmt.Fprintf(w, "Killing webserver!")
+	fmt.Fprintf(w, "Shutting down webserver!")
 	ctx, err := context.WithTimeout(context.Background(), 1*time.Second)
 	if err != nil {
 
 	}
 	n.server.Shutdown(ctx)
-	log.Printf("Handling /kill")
+	log.Printf("Handling /shutdown")
 	n.wg.Done()
 }
 
-func (n *Node) HandleSpawn(w http.ResponseWriter, r *http.Request) {
+func (n *Node) HandleStartup(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	log.Printf("Handling /spawn")
-	fmt.Fprintf(w, "Spawning new node!")
-	webmind.StartNode(strconv.Itoa(n.OtherPort))
+	log.Printf("Handling /startup")
+	fmt.Fprintf(w, "Starting up new node!")
+	foundation.StartNode(strconv.Itoa(n.OtherPort))
 }
 
-func (n *Node) HandleHeartbeat(w http.ResponseWriter, r *http.Request) {
+func (n *Node) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	log.Printf("Handling /heartbeat")
-	fmt.Fprintf(w, "Heartbeat answered!")
+	log.Printf("Handling /status")
+	fmt.Fprintf(w, "Node up and running! (%v)", n.ctime.Round(0))
 }
 
 // Utility functions =================================================
