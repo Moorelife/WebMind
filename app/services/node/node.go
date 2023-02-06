@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 14285, "port number for the monitor node.")
+	port := flag.Int("port", 14285, "port number for the node.")
 	flag.Parse()
 
 	address := net.TCPAddr{
@@ -21,7 +21,6 @@ func main() {
 	log.Printf("Starting Web interface at %s", address.String())
 
 	node := system.NewNode(address)
-	node.OtherPort = 11000
 	node.Start()
 
 	log.Printf("Ending program =================================")

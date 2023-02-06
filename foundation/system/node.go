@@ -17,7 +17,7 @@ import (
 
 // Struct and Constructor ============================================
 
-// Node defines the data required to define a node system.
+// Node defines the data required to set up a node system.
 type Node struct {
 	Address net.TCPAddr `json:"Address"` // the address of the node.
 
@@ -25,8 +25,7 @@ type Node struct {
 	wg     sync.WaitGroup
 	ctime  time.Time
 
-	// temporary stuff
-	OtherPort int
+	otherPort int
 }
 
 // NewNode creates a new Node structure and returns a pointer to it
@@ -68,7 +67,7 @@ func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Shutting down webserver!")
 	ctx, err := context.WithTimeout(context.Background(), 1*time.Second)
 	if err != nil {
-
+		fmt.Fprintf(w, "Error conmstructing context")
 	}
 	n.server.Shutdown(ctx)
 	log.Printf("Handling /shutdown")
@@ -78,15 +77,15 @@ func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 func (n *Node) HandleStartup(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Printf("Handling /startup")
-	n.OtherPort = n.getPortFromRequest(r)
+	n.otherPort = n.getPortFromRequest(r)
 	fmt.Fprintf(w, "Starting up new node!")
-	foundation.StartNode(strconv.Itoa(n.OtherPort))
+	foundation.StartNode(strconv.Itoa(n.otherPort))
 }
 
 func (n *Node) getPortFromRequest(r *http.Request) int {
 	parts := strings.Split(r.RequestURI, "?")
 	if len(parts) < 2 {
-		return n.OtherPort
+		return n.otherPort
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err == nil {
@@ -99,7 +98,7 @@ func clamp(n, min, max int) int {
 	if n < min {
 		return min
 	}
-	
+
 	if n > max {
 		return max
 	}
