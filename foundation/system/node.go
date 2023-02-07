@@ -20,17 +20,21 @@ import (
 // Node defines the data required to set up a node system.
 type Node struct {
 	Address net.TCPAddr `json:"Address"` // the address of the node.
+	Source  net.TCPAddr `json:"Source"`  // the address of the node that started this.
 
 	server http.Server
 	wg     sync.WaitGroup
 	ctime  time.Time
-
-	otherPort int
 }
 
 // NewNode creates a new Node structure and returns a pointer to it
-func NewNode(address net.TCPAddr) *Node {
-	node := Node{Address: address, wg: sync.WaitGroup{}, ctime: time.Now()}
+func NewNode(source net.TCPAddr, address net.TCPAddr) *Node {
+	node := Node{
+		Address: address,
+		Source:  source,
+		wg:      sync.WaitGroup{},
+		ctime:   time.Now(),
+	}
 	return &node
 }
 
@@ -77,15 +81,15 @@ func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 func (n *Node) HandleStartup(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	log.Printf("Handling /startup")
-	n.otherPort = n.getPortFromRequest(r)
+	n.Source.Port = n.getPortFromRequest(r)
 	fmt.Fprintf(w, "Starting up new node!")
-	foundation.StartNode(strconv.Itoa(n.otherPort))
+	foundation.StartNode(strconv.Itoa(n.Source.Port), strconv.Itoa(n.Address.Port))
 }
 
 func (n *Node) getPortFromRequest(r *http.Request) int {
 	parts := strings.Split(r.RequestURI, "?")
 	if len(parts) < 2 {
-		return n.otherPort
+		return n.Source.Port
 	}
 	port, err := strconv.Atoi(parts[1])
 	if err == nil {

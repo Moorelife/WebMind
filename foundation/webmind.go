@@ -35,12 +35,11 @@ func SetupLogging(program string) {
 	log.SetOutput(mw)
 }
 
-func StartNode(port string) {
-	cmd := exec.Command("app\\services\\startnode.cmd", port)
-	// log.Printf("CMD: %#v", cmd)
+func StartNode(target, currentPort string) {
+	cmd := exec.Command("app\\services\\startnode.cmd", target, currentPort)
 	cmd.Start()
 	cmd.Wait()
-	log.Printf("Node started on port %s", port)
+	log.Printf("node on port %s started new node on port %s", currentPort, target)
 }
 
 func PrintRequest(r *http.Request) {

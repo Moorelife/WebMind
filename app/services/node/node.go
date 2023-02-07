@@ -9,18 +9,27 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 14285, "port number for the node.")
+	sourcePort := flag.Int("source", 14285, "port number for the source node.")
+	nodePort := flag.Int("port", 11111, "port number for the new node.")
 	flag.Parse()
 
-	address := net.TCPAddr{
-		IP:   []byte{192, 168, 2, 111}, // accept any connection
-		Port: *port,
+	log.Printf("Source Port: %v", *sourcePort)
+	log.Printf("Node Port:   %v", *nodePort)
+
+	addr := []byte{192, 168, 2, 111}
+	sourceAddress := net.TCPAddr{
+		IP:   addr,
+		Port: *sourcePort,
 	}
-	foundation.SetupLogging(address.String())
+	nodeAddress := net.TCPAddr{
+		IP:   addr,
+		Port: *nodePort,
+	}
+	foundation.SetupLogging(nodeAddress.String())
 
-	log.Printf("Starting Web interface at %s", address.String())
+	log.Printf("Starting Web interface at %s", nodeAddress.String())
 
-	node := system.NewNode(address)
+	node := system.NewNode(sourceAddress, nodeAddress)
 	node.Start()
 
 	log.Printf("Ending program =================================")

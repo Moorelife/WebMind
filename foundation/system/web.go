@@ -31,7 +31,7 @@ func NewWeb(nodes []*Node) *Web {
 
 func (w *Web) Start() {
 	for _, node := range w.Nodes {
-		foundation.StartNode(strconv.Itoa(node.Address.Port))
+		foundation.StartNode(strconv.Itoa(node.Source.Port), strconv.Itoa(node.Address.Port))
 	}
 }
 
