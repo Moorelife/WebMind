@@ -52,9 +52,14 @@ func (n *Node) Start() {
 	go func() {
 		if err := n.server.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("Error in ListenAndServe(): %v", err)
+			n.wg.Done()
 		}
 	}()
 	n.wg.Wait()
+}
+
+func startWebServer() {
+
 }
 
 // WebHandler endpoints ==============================================
@@ -69,10 +74,7 @@ func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	fmt.Fprintf(w, "Shutting down webserver!")
-	ctx, err := context.WithTimeout(context.Background(), 1*time.Second)
-	if err != nil {
-		fmt.Fprintf(w, "Error conmstructing context")
-	}
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	n.server.Shutdown(ctx)
 	log.Printf("Handling /shutdown")
 	n.wg.Done()
