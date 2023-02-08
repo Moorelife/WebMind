@@ -10,7 +10,7 @@ import (
 
 func main() {
 	sourcePort := flag.Int("source", 14285, "port number for the source node.")
-	nodePort := flag.Int("port", 11111, "port number for the new node.")
+	nodePort := flag.Int("node", 11111, "port number for the new node.")
 	flag.Parse()
 
 	log.Printf("Source Port: %v", *sourcePort)

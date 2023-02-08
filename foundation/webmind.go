@@ -37,6 +37,8 @@ func SetupLogging(program string) {
 
 func StartNode(target, currentPort string) {
 	cmd := exec.Command("app\\services\\startnode.cmd", target, currentPort)
+	cwd, _ := os.Getwd()
+	log.Printf("CURWD: %s COMMAND: %v", cwd, cmd)
 	cmd.Start()
 	cmd.Wait()
 	log.Printf("node on port %s started new node on port %s", currentPort, target)

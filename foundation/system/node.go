@@ -45,7 +45,34 @@ func (n *Node) Start() {
 	http.HandleFunc("/shutdown", n.HandleShutdown)
 	http.HandleFunc("/startup", n.HandleStartup)
 	http.HandleFunc("/status", n.HandleStatus)
+	http.HandleFunc("/sync", n.HandleSync)
 
+	n.startSyncCheck()
+	n.startWebServer()
+	n.wg.Wait()
+}
+
+func (n *Node) startSyncCheck() {
+	go func() {
+		for true {
+			time.Sleep(5 * time.Second)
+			url := fmt.Sprintf("http://%s/sync?%d", n.Source.String(), n.Address.Port)
+			response, err := http.Get(url)
+			if err != nil {
+				log.Printf("sync failed, restarting: %v", err)
+				foundation.StartNode(strconv.Itoa(n.Source.Port), strconv.Itoa(n.Address.Port))
+			}
+			if response != nil {
+				defer response.Body.Close()
+				if response.StatusCode != http.StatusOK {
+					log.Printf("illegal response received")
+				}
+			}
+		}
+	}()
+}
+
+func (n *Node) startWebServer() {
 	n.wg.Add(1)
 	n.server = http.Server{Addr: n.Address.String(), Handler: nil}
 
@@ -55,11 +82,6 @@ func (n *Node) Start() {
 			n.wg.Done()
 		}
 	}()
-	n.wg.Wait()
-}
-
-func startWebServer() {
-
 }
 
 // WebHandler endpoints ==============================================
@@ -73,7 +95,7 @@ func (n *Node) HandleRoot(w http.ResponseWriter, r *http.Request) {
 
 func (n *Node) HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	fmt.Fprintf(w, "Shutting down webserver!")
+	fmt.Fprintf(w, "Shutting down node %s", n.Address.String())
 	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	n.server.Shutdown(ctx)
 	log.Printf("Handling /shutdown")
@@ -86,6 +108,13 @@ func (n *Node) HandleStartup(w http.ResponseWriter, r *http.Request) {
 	n.Source.Port = n.getPortFromRequest(r)
 	fmt.Fprintf(w, "Starting up new node!")
 	foundation.StartNode(strconv.Itoa(n.Source.Port), strconv.Itoa(n.Address.Port))
+}
+
+func (n *Node) HandleSync(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	log.Printf("Handling /sync")
+	n.Source.Port = n.getPortFromRequest(r)
+	fmt.Fprintf(w, "%s", n.Address)
 }
 
 func (n *Node) getPortFromRequest(r *http.Request) int {
