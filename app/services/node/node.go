@@ -27,7 +27,7 @@ func main() {
 	}
 	foundation.SetupLogging(nodeAddress.String())
 
-	log.Printf("Starting Web interface at %s", nodeAddress.String())
+	log.Printf("starting web interface at %s", nodeAddress.String())
 
 	node := system.NewNode(sourceAddress, nodeAddress)
 	node.Start()

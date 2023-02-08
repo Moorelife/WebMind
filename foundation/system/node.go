@@ -59,7 +59,7 @@ func (n *Node) startSyncCheck() {
 			url := fmt.Sprintf("http://%s/sync?%d", n.Source.String(), n.Address.Port)
 			response, err := http.Get(url)
 			if err != nil {
-				log.Printf("sync failed, restarting: %v", err)
+				log.Printf("sync failed, restarting peer...")
 				foundation.StartNode(strconv.Itoa(n.Source.Port), strconv.Itoa(n.Address.Port))
 			}
 			if response != nil {
